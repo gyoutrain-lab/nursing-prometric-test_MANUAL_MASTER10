@@ -1,0 +1,3038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nurse Technician Board Exam Simulator (Module 2)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { 800: '#1e3a8a', 900: '#0f172a' },
+                        teal: { 600: '#0d9488', 700: '#0f766e' },
+                        emerald: { 600: '#059669', 700: '#047857' },
+                        gold: { 500: '#eab308', 600: '#ca8a04' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-teal-600 selection:text-white">
+
+    <!-- Header -->
+    <header class="bg-navy-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-teal-600 flex items-center justify-center font-bold text-white text-xl shadow-lg">NT</div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white">Nurse Technician Exam Simulator</h1>
+                    <p class="text-xs text-slate-400">Clinical Competency & Exam Preparation Engine</p>
+                </div>
+            </div>
+            <div id="header-stats" class="hidden flex items-center gap-6 text-sm bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700">
+                <div>Timer: <span id="timer-display" class="font-mono font-bold text-gold-500">00:00:00</span></div>
+                <div>Progress: <span id="progress-display" class="font-bold text-teal-400">0/0</span></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-5xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center">
+
+        <!-- SETUP VIEW -->
+        <div id="view-setup" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-xl max-w-2xl mx-auto w-full">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-white mb-2">Configure Nurse Technician Exam</h2>
+                <p class="text-slate-400 text-sm">Paste your 200-item JSON test bank below or leave empty to use the loaded sample items.</p>
+            </div>
+
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Question Bank JSON Data</label>
+                    <textarea id="json-input" rows="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-teal-600" placeholder="Paste your 200-item JSON array here... (Leave empty to use built-in sample test items)"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Number of Questions</label>
+                        <select id="select-count" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-teal-600">
+                            <option value="5">5 Questions (Quick Practice)</option>
+                            <option value="20" selected>20 Questions (Standard Module)</option>
+                            <option value="50">50 Questions (Half Mock)</option>
+                            <option value="100">100 Questions (Extended Mock)</option>
+                            <option value="200">200 Questions (Full Mock Exam)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Time Limit Mode</label>
+                        <select id="select-timelimit" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-teal-600">
+                            <option value="timed" selected>Timed Exam (Proportional)</option>
+                            <option value="untimed">Untimed Practice</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="startExam()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3.5 px-6 rounded-xl transition shadow-lg text-base">
+                    Start Examination
+                </button>
+            </div>
+        </div>
+
+        <!-- QUIZ VIEW -->
+        <div id="view-quiz" class="hidden space-y-6">
+            <!-- Top Nav & Palette Toggle -->
+            <div class="flex justify-between items-center bg-slate-800 border border-slate-700 px-4 py-3 rounded-xl">
+                <div id="question-domain" class="text-xs uppercase tracking-wider bg-teal-900/60 text-teal-300 border border-teal-700 px-3 py-1 rounded-full font-semibold">
+                    Domain
+                </div>
+                <button onclick="togglePalette()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg transition font-medium">
+                    Toggle Question Matrix
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                <!-- Question Card -->
+                <div class="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
+                    <div class="flex justify-between items-center text-sm text-slate-400 border-b border-slate-700 pb-3">
+                        <span id="question-number-label" class="font-bold text-white">Question 1 of 20</span>
+                        <span id="question-id-badge" class="font-mono text-xs bg-slate-700 px-2 py-1 rounded">ID: #1</span>
+                    </div>
+
+                    <div id="question-text" class="text-lg text-slate-100 font-medium leading-relaxed">
+                        <!-- Question text inserted dynamically -->
+                    </div>
+
+                    <div id="options-container" class="space-y-3">
+                        <!-- Options inserted dynamically -->
+                    </div>
+
+                    <!-- Rationale Box -->
+                    <div id="rational-box" class="hidden bg-slate-900 border border-teal-700/60 rounded-xl p-4 text-sm text-slate-300 space-y-2 mt-4">
+                        <div class="font-bold text-teal-400 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Clinical Rationale
+                        </div>
+                        <p id="rational-text" class="text-slate-300 leading-relaxed"></p>
+                    </div>
+
+                    <!-- Controls Footer -->
+                    <div class="flex justify-between items-center pt-6 border-t border-slate-700">
+                        <button id="btn-prev" onclick="prevQuestion()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            Previous
+                        </button>
+                        <div class="flex gap-3">
+                            <button id="btn-flag" onclick="toggleFlag()" class="bg-slate-700 hover:bg-slate-600 text-gold-500 border border-slate-600 px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+                                Flag for Review
+                            </button>
+                            <button id="btn-next" onclick="nextQuestion()" class="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition">
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question Matrix / Navigation Sidebar -->
+                <div id="palette-sidebar" class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-bold text-white">Question Navigator</h3>
+                        <span class="text-xs text-slate-400">Click to jump</span>
+                    </div>
+                    <div id="palette-grid" class="grid grid-cols-5 gap-2 max-h-[350px] overflow-y-auto pr-1">
+                        <!-- Palette buttons generated dynamically -->
+                    </div>
+                    <div class="pt-4 border-t border-slate-700 text-xs space-y-2 text-slate-400">
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-teal-600 inline-block"></span> Answered</div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-gold-500 inline-block"></span> Flagged</div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-slate-700 inline-block"></span> Unanswered</div>
+                    </div>
+                    <button onclick="confirmSubmitExam()" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-md">
+                        Finish & Submit Exam
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULTS VIEW -->
+        <div id="view-results" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-xl max-w-2xl mx-auto w-full space-y-6">
+            <div class="text-center space-y-2">
+                <h2 class="text-3xl font-bold text-white">Examination Summary</h2>
+                <p class="text-slate-400 text-sm">Nurse Technician Core Competency Performance Report</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 bg-slate-900 p-6 rounded-xl border border-slate-700 text-center">
+                <div>
+                    <div class="text-xs uppercase text-slate-400 font-semibold mb-1">Final Score</div>
+                    <div id="res-score" class="text-4xl font-extrabold text-teal-400">0%</div>
+                </div>
+                <div>
+                    <div class="text-xs uppercase text-slate-400 font-semibold mb-1">Pass Status</div>
+                    <div id="res-status" class="text-2xl font-bold text-emerald-500">PASS</div>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-sm text-slate-300">
+                <div class="flex justify-between border-b border-slate-700 pb-2">
+                    <span>Total Questions Attempted:</span>
+                    <span id="res-total" class="font-bold text-white">0</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700 pb-2">
+                    <span>Correct Answers:</span>
+                    <span id="res-correct" class="font-bold text-emerald-400">0</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700 pb-2">
+                    <span>Incorrect Answers:</span>
+                    <span id="res-incorrect" class="font-bold text-rose-400">0</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700 pb-2">
+                    <span>Time Elapsed:</span>
+                    <span id="res-time" class="font-bold text-gold-500">00:00:00</span>
+                </div>
+            </div>
+
+            <div class="flex gap-4 pt-4">
+                <button onclick="reviewExam()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition text-sm">
+                    Review Questions
+                </button>
+                <button onclick="resetExam()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+                    Configure New Exam
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-6 text-center text-xs text-slate-500 border-t border-slate-800">
+        Nurse Technician Board Exam Simulator &bull; Professional Healthcare Education Suite
+    </footer>
+
+    <!-- Application Script -->
+    <script>
+        // Sample items from the test bank for demonstration
+        const defaultItemBank = [
+{
+    "id": 1,
+    "domain": "Advanced Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician is ordered to monitor a client receiving an intravenous infusion of a potent vasodilator. The client's baseline blood pressure is 120/80 mmHg. Thirty minutes after infusion starts, the blood pressure drops to 82/50 mmHg, and the client feels lightheaded. What is the immediate nursing action?",
+    "options": [
+      "Document the reading and recheck in two hours.",
+      "Immediately notify the registered nurse (RN) of the acute hypotension and assist the client to a safe flat or shock position as directed.",
+      "Increase the IV infusion rate to compensate for the drop.",
+      "Offer the client a hot cup of coffee to raise blood pressure."
+    ],
+    "correct": 1,
+    "rational": "Acute drug-induced hypotension is a critical finding; the technician must alert the RN immediately and ensure client safety, as rapid intervention is required to prevent hypoperfusion."
+  },
+  {
+    "id": 2,
+    "domain": "Complex Infection Control & Isolation",
+    "question": "A client is admitted to the medical unit with a suspected multidrug-resistant organism (MDRO) wound infection. Which combination of precautions must the nurse technician initiate immediately upon entry?",
+    "options": [
+      "Airborne precautions with an N95 respirator mask and negative pressure room",
+      "Contact precautions requiring a gown and gloves for all interactions involving direct client or environmental contact",
+      "Droplet precautions using a simple paper mask only",
+      "Standard precautions without any protective barriers"
+    ],
+    "correct": 1,
+    "rational": "MDROs spread primarily via direct or indirect contact with contaminated skin or surfaces; contact precautions requiring gowns and gloves are mandatory."
+  },
+  {
+    "id": 3,
+    "domain": "Advanced Patient Mobility & Safe Handling",
+    "question": "When utilizing a ceiling-mounted mechanical lift to transfer a heavy, completely non-ambulatory client, what is a crucial safety check regarding the sling straps?",
+    "options": [
+      "Attach all short loops to the top hooks and long loops to the bottom hooks regardless of client posture.",
+      "Ensure color-coded or symmetrical sling loops are matched evenly on both sides to prevent the client from tilting or falling out during the lift.",
+      "Twist the straps twice to shorten them securely.",
+      "Allow the client to hold the mechanical cable directly."
+    ],
+    "correct": 1,
+    "rational": "Symmetrical loop attachment on mechanical lift bars prevents uneven suspension, balancing weight safely and preventing accidental falls during transfers."
+  },
+  {
+    "id": 4,
+    "domain": "Pharmacology & Medication Safety Assistance",
+    "question": "A nurse technician is assisting an elderly client with taking multiple oral medications. The client drops a capsule on the floor. What is the correct procedure?",
+    "options": [
+      "Pick up the capsule, wipe it with a dry tissue, and give it to the client.",
+      "Discard the dropped medication safely according to facility waste guidelines and obtain a replacement from the medication dispenser via the RN.",
+      "Wash the capsule under running tap water before administration.",
+      "Ask the client if they still want to take the floor capsule."
+    ],
+    "correct": 1,
+    "rational": "Dropped medications are considered contaminated and unsafe; they must be discarded safely and replaced through official nursing channels."
+  },
+  {
+    "id": 5,
+    "domain": "Advanced Wound Care & Skin Integrity",
+    "question": "A nurse technician is assisting with dressing changes for a client with a Stage 3 pressure injury on the heel. The wound bed has black, leathery, necrotic tissue (eschar). What is the primary clinical implication of this finding?",
+    "options": [
+      "The wound is healing rapidly by primary intention.",
+      "The necrotic tissue (eschar) must be evaluated by the licensed team for debridement, as dead tissue impedes healing and promotes infection.",
+      "The wound should be scrubbed vigorously with iodine daily.",
+      "The heel should be soaked in ice water."
+    ],
+    "correct": 1,
+    "rational": "Eschar is dead necrotic tissue that prevents wound closure and harbors bacteria; it requires specialized assessment and debridement by licensed clinicians."
+  },
+  {
+    "id": 6,
+    "domain": "Ethical Communication & Client Advocacy",
+    "question": "A client who is terminally ill confides in the nurse technician, 'I am in severe pain, but I am afraid to ask for more medication because I don't want to become a drug addict.' How should the technician respond?",
+    "options": [
+      "Tell the client they are already addicted and should stop complaining.",
+      "Validate the client's feelings and explain that pain medication can be managed safely under professional guidance, then report the pain and concern to the registered nurse.",
+      "Advise the client to throw away all their prescribed painkillers.",
+      "Promise to increase the medication dose independently."
+    ],
+    "correct": 1,
+    "rational": "Addressing fear of addiction with empathy and connecting the client with licensed nursing staff ensures effective pain management while maintaining professional scope."
+  },
+  {
+    "id": 7,
+    "domain": "Emergency Response & Advanced First Aid",
+    "question": "During a meal in the dining hall, an elderly client suddenly gasps, clutches their neck with both hands, and is unable to speak or cough. What is the technician's immediate lifesaving action?",
+    "options": [
+      "Offer the client a glass of cold water.",
+      "Perform rapid abdominal thrusts (Heimlich maneuver) until the foreign body is expelled or the client becomes unresponsive.",
+      "Begin chest compressions immediately while the client is sitting.",
+      "Wait 5 minutes to see if the object dislodges naturally."
+    ],
+    "correct": 1,
+    "rational": "A severe, complete foreign body airway obstruction in a conscious adult requires immediate abdominal thrusts to force residual air out and clear the airway."
+  },
+  {
+    "id": 8,
+    "domain": "Personal Care & Specialized Hygiene",
+    "question": "When performing complete hygienic care for an unconscious client, why is regular and meticulous mouth care performed every 2 to 4 hours?",
+    "options": [
+      "To prevent drying of oral mucous membranes, dental plaque accumulation, and ventilator-associated or aspiration pneumonia.",
+      "To whiten the client's teeth for cosmetic photographs.",
+      "To eliminate the need for eye care.",
+      "To stimulate the client's appetite."
+    ],
+    "correct": 0,
+    "rational": "Unconscious clients lack normal salivary flow and swallowing reflexes, predisposing them to bacterial build-up and aspiration pneumonia; frequent oral hygiene mitigates this risk."
+  },
+  {
+    "id": 9,
+    "domain": "Diagnostic Specimen Collection & Handling",
+    "question": "A nurse technician is tasked with collecting a 24-hour urine specimen that requires refrigeration or ice preservation. Why is maintaining a cold temperature critical during this collection?",
+    "options": [
+      "To freeze the urine solid for easy transport.",
+      "To prevent bacterial growth and chemical degradation of specific urinary constituents over the 24-hour period.",
+      "To change the color of the urine sample.",
+      "To increase the total volume of output."
+    ],
+    "correct": 1,
+    "rational": "Refrigeration inhibits bacterial proliferation and chemical breakdown of unstable substances in prolonged urine collections."
+  },
+  {
+    "id": 10,
+    "domain": "Nutrition & Enteral Tube Management",
+    "question": "A nurse technician is assisting a client with an intermittent gravity bolus tube feeding. Before pouring formula into the feeding syringe/funnel, what essential safety step must be performed?",
+    "options": [
+      "Verify tube placement and check residual gastric volume as per policy, and ensure the head of the bed is elevated at least 30 to 45 degrees.",
+      "Lie the client completely flat on their back.",
+      "Flush the tube with boiling water rapidly.",
+      "Heat the formula in a microwave until boiling."
+    ],
+    "correct": 0,
+    "rational": "Checking residuals and maintaining head elevation prevents regurgitation and pulmonary aspiration during enteral feedings."
+  },
+  {
+    "id": 11,
+    "domain": "Patient Mobility & Mechanical Safety",
+    "question": "When transferring a client with a newly applied long leg cast from a wheelchair to a bed, what specialized physical consideration must the nurse technician keep in mind?",
+    "options": [
+      "The heavy cast alters the client's center of gravity and limb weight; extra support is needed to prevent strain and maintain limb alignment.",
+      "The cast can be used as a handle to lift the client.",
+      "The cast should rest directly on the edge of the mattress.",
+      "No assistance is needed because casts make legs lighter."
+    ],
+    "correct": 0,
+    "rational": "Heavy orthopedic casts add significant asymmetrical weight, requiring careful ergonomic support to maintain proper body alignment and protect staff and client."
+  },
+  {
+    "id": 12,
+    "domain": "Fall Prevention & Environmental Safety",
+    "question": "A client assessed as high fall-risk is admitted to a room at the end of the hallway, far from the nursing station. Which environmental modification should the nurse technician prioritize?",
+    "options": [
+      "Keep all lights turned completely off so the client sleeps.",
+      "Ensure the bed alarm sensor is active, a functional nightlight is on, and the call bell is within immediate grasp.",
+      "Apply four-sided physical bed rails locked tightly.",
+      "Place heavy furniture across the doorway."
+    ],
+    "correct": 1,
+    "rational": "Fall prevention for high-risk clients relies on proactive safety tools: bed exit alarms, clear illumination, and accessible call mechanisms."
+  },
+  {
+    "id": 13,
+    "domain": "Pharmacology & Topical Administration",
+    "question": "A nurse technician is assisting with applying a medicated transdermal patch. Which technique ensures proper skin preparation and absorption?",
+    "options": [
+      "Apply the new patch over an area of clean, dry, hairless skin, rotating sites with each application and removing the old patch.",
+      "Apply the patch directly over old adhesive residue and leftover ointment.",
+      "Shave the application site aggressively immediately before application.",
+      "Warm the patch with a cigarette lighter before sticking it on."
+    ],
+    "correct": 0,
+    "rational": "Transdermal patches require clean, dry, intact skin without excess hair to ensure consistent drug absorption, and old patches must be removed to prevent overdose."
+  },
+  {
+    "id": 14,
+    "domain": "Advanced Wound Care & Drainage Systems",
+    "question": "A nurse technician is emptying a closed-wound suction drain (such as a Jackson-Pratt drain). What is the correct method to re-establish suction after emptying?",
+    "options": [
+      "Leave the bulb compressed completely flat without closing the plug.",
+      "Compress the bulb fully to evacuate air, and while keeping it compressed, insert and close the plug securely to maintain negative pressure suction.",
+      "Fill the bulb with tap water before closing.",
+      "Hang the drain higher than the client's wound."
+    ],
+    "correct": 1,
+    "rational": "Compressing the bulb fully and closing the port while squeezed creates the negative pressure vacuum required for effective wound drainage collection."
+  },
+  {
+    "id": 15,
+    "domain": "Hemodynamic Monitoring & Pulse Assessment",
+    "question": "When palpating a client's carotid pulse during a rapid clinical assessment, which crucial safety rule must the nurse technician follow?",
+    "options": [
+      "Palpate both carotid arteries simultaneously with maximum pressure.",
+      "Palpate only one carotid artery at a time with gentle pressure to avoid triggering carotid sinus reflex, bradycardia, or dropping blood pressure.",
+      "Rub the carotid site vigorously with alcohol.",
+      "Use an automated blood pressure cuff over the neck."
+    ],
+    "correct": 1,
+    "rational": "Simultaneous or excessive pressure on carotid arteries can stimulate the carotid sinus, causing a reflex drop in heart rate and blood pressure or disrupting cerebral blood flow."
+  },
+  {
+    "id": 16,
+    "domain": "Infection Control & Surgical Asepsis",
+    "question": "During a sterile procedure, a nurse technician notices that a sterile instrument package is damp and water droplets are visible on the inner wrapper. How should this item be handled?",
+    "options": [
+      "Dry the wrapper with a paper towel and use it.",
+      "Consider the package contaminated (strike-through contamination) and discard or return it immediately, as moisture compromises sterile barriers.",
+      "Use the instrument only if it looks clean.",
+      "Spray disinfectant over the damp packaging."
+    ],
+    "correct": 1,
+    "rational": "Moisture acts as a wick for microorganisms to penetrate sterile packaging (strike-through), rendering wet sterile packs contaminated and unusable."
+  },
+  {
+    "id": 17,
+    "domain": "Advanced Specimen Collection & Diagnostics",
+    "question": "A nurse technician is assisting with drawing blood tubes for laboratory testing. What is the correct order of draw when multiple tubes are filled from a single venipuncture?",
+    "options": [
+      "Order of draw does not matter at all.",
+      "Blood cultures or sterile tubes first, followed by coagulation tubes (light blue), serum tubes, and additive tubes, preventing cross-contamination of additives.",
+      "Lavender tubes first always.",
+      "Trace element tubes before blood cultures."
+    ],
+    "correct": 1,
+    "rational": "Following the standardized order of draw prevents additive carryover from one tube to another, which can invalidate diagnostic laboratory results."
+  },
+  {
+    "id": 18,
+    "domain": "Nutrition & Therapeutic Diets",
+    "question": "A client with congestive heart failure (CHF) and severe lower extremity edema is prescribed a 2-gram sodium diet and fluid restriction. Which dietary selection selected by the client indicates an understanding of the teaching?",
+    "options": [
+      "Canned tomato soup with saltine crackers",
+      "Grilled chicken breast seasoned with lemon and herbs, served with steamed green beans and fresh fruit",
+      "Pepperoni pizza and pickled olives",
+      "Cured ham with salted potato chips"
+    ],
+    "correct": 1,
+    "rational": "Fresh, unprocessed foods seasoned with herbs rather than salt are low in sodium and appropriate for clients managing heart failure and fluid retention."
+  },
+  {
+    "id": 19,
+    "domain": "Patient Safety & Restraint Alternatives",
+    "question": "A confused client keeps attempting to pull out their intravenous (IV) line. What is an effective, least-restrictive nursing intervention the nurse technician should support?",
+    "options": [
+      "Apply rigid leather wrist restraints immediately.",
+      "Apply an IV protective mesh sleeve (safety mitt or wrap) and distract the client with comforting activities while alerting the RN.",
+      "Tape the client's hands securely to the bed frame.",
+      "Sedate the client with high-dose narcotics."
+    ],
+    "correct": 1,
+    "rational": "Protective sleeves and soft wraps guard IV sites without resorting to full physical limb restraints, aligning with least-restrictive safety principles."
+  },
+  {
+    "id": 20,
+    "domain": "Professional Accountability & Communication",
+    "question": "A nurse technician observes a sudden, significant change in a client's level of consciousness (becoming difficult to arouse). What is the technician's immediate professional responsibility?",
+    "options": [
+      "Leave the room and wait until the end of the shift to mention it.",
+      "Perform a rapid neurological check (response to stimuli) and notify the registered nurse and charge nurse immediately.",
+      "Pour cold water on the client's face.",
+      "Document the change in the chart 12 hours later."
+    ],
+    "correct": 1,
+    "rational": "Acute changes in mental status require immediate assessment and urgent reporting to licensed nursing staff for prompt medical evaluation."
+  },
+{
+    "id": 21,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician is preparing to auscultate an adult client's apical pulse. Where is the correct anatomical landmark to place the stethoscope diaphragm?",
+    "options": [
+      "Fifth intercostal space at the left midclavicular line (apex of the heart)",
+      "Second intercostal space at the right sternal border",
+      "Fourth intercostal space at the left sternal border",
+      "Third intercostal space at the right midclavicular line"
+    ],
+    "correct": 0,
+    "rational": "The apical pulse (mitral valve area / point of maximal impulse) is auscultated at the fifth intercostal space along the left midclavicular line."
+  },
+  {
+    "id": 22,
+    "domain": "Infection Control & Safety",
+    "question": "When performing surgical hand antisepsis or standard hand hygiene, what is the key rule regarding artificial fingernails and chipped nail polish in healthcare workers?",
+    "options": [
+      "They are permitted if covered with thin medical tape.",
+      "Artificial fingernails and chipped polish harbor high concentrations of bacteria and fungal pathogens and are prohibited for direct patient care staff.",
+      "They are allowed only for administrative staff.",
+      "They are recommended to protect fingernails from chemicals."
+    ],
+    "correct": 1,
+    "rational": "Healthcare personnel involved in direct patient care must not wear artificial nails or extenders, and nail polish must be chip-free, as microbial growth thrives underneath."
+  },
+  {
+    "id": 23,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When a client with right-sided lower extremity weakness is descending stairs using a cane, what is the correct sequence of movement?",
+    "options": [
+      "Lead with the strong leg while holding the cane in the air.",
+      "Move the strong leg down first, followed by crutches.",
+      "Move the cane and the weaker (right) leg down to the step first, followed by the stronger (left) leg.",
+      "Jump down both steps simultaneously."
+    ],
+    "correct": 2,
+    "rational": "When descending stairs with a cane, remember 'down with the bad': the cane and the affected/weaker leg step down first for support, followed by the stronger leg."
+  },
+  {
+    "id": 24,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "What is the correct procedural action regarding used disposable needles and syringes after patient care?",
+    "options": [
+      "Recap the needle using a two-handed technique.",
+      "Break or bend the needle manually to save container space.",
+      "Leave the uncapped needle resting on the bedside table.",
+      "Drop the uncapped needle and syringe directly into a puncture-resistant sharps container immediately."
+    ],
+    "correct": 3,
+    "rational": "To prevent accidental needlestick injuries, needles must never be recapped, bent, or broken; they are dropped immediately into a rigid sharps container."
+  },
+  {
+    "id": 25,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "A nurse technician observes a reddened area over a client's sacrum that does not turn white (blanch) when pressed with a finger. How should this finding be classified?",
+    "options": [
+      "Stage 1 pressure injury",
+      "Stage 3 full-thickness ulcer",
+      "Suspected Deep Tissue Injury (DTPI)",
+      "Normal reactive hyperemia that fades in 5 minutes"
+    ],
+    "correct": 0,
+    "rational": "Persistent non-blanching erythema of intact skin over a bony prominence is the defining hallmark of a Stage 1 pressure injury."
+  },
+  {
+    "id": 26,
+    "domain": "Communication & Client Rights",
+    "question": "During a clinical shift handover report, the nurse technician uses the SBAR format. What does the 'B' in SBAR stand for?",
+    "options": [
+      "Blood pressure reading",
+      "Background (pertinent clinical history and context)",
+      "Bedside safety check",
+      "Breathing rate assessment"
+    ],
+    "correct": 1,
+    "rational": "SBAR stands for Situation, Background, Assessment, and Recommendation, providing a structured handover framework."
+  },
+  {
+    "id": 27,
+    "domain": "Emergency Response & First Aid",
+    "question": "When operating a portable fire extinguisher during an active fire, what does the acronym PASS stand for?",
+    "options": [
+      "Push, Alarm, Spray, Sweep",
+      "Press, Assess, Smother, Stop",
+      "Pull the pin, Aim low at the base, Squeeze the handle, Sweep side to side",
+      "Prevent, Alert, Shield, Save"
+    ],
+    "correct": 2,
+    "rational": "PASS represents Pull, Aim, Squeeze, and Sweep when utilizing a fire extinguisher."
+  },
+  {
+    "id": 28,
+    "domain": "Personal Care & Hygiene",
+    "question": "When assisting a female client with a bed bath, in what direction should the nurse technician wash the client's eyes?",
+    "options": [
+      "From the outer ear corner inward toward the nose bridge",
+      "In a vigorous circular rubbing motion across both eyelids simultaneously",
+      "From the jawline upward over the eyelids",
+      "From the inner canthus outward toward the ear using a clean portion of the washcloth for each eye"
+    ],
+    "correct": 3,
+    "rational": "Cleansing eyes from the inner canthus outward prevents debris and microorganisms from entering the nasolacrimal duct."
+  },
+  {
+    "id": 29,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "A client is scheduled for a Fecal Occult Blood Test (Guaiac). Which dietary restriction should be verified prior to testing to prevent false-positive results?",
+    "options": [
+      "Avoid eating red meat, raw broccoli, turnips, and melons for 3 days prior to the test.",
+      "Increase daily dairy and milk product consumption.",
+      "Fast completely from all liquids for 48 hours.",
+      "Consume high amounts of vitamin C supplements."
+    ],
+    "correct": 0,
+    "rational": "Red meat and certain raw vegetables contain peroxidases that can cause false-positive guaiac occult blood test results and should be avoided."
+  },
+  {
+    "id": 30,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A nurse technician calculates a client's fluid intake for breakfast. The client drank 6 ounces of orange juice and 8 ounces of milk. What is the total fluid intake in milliliters (mL)?",
+    "options": [
+      "300 mL",
+      "420 mL",
+      "500 mL",
+      "240 mL"
+    ],
+    "correct": 1,
+    "rational": "1 fluid ounce equals 30 mL. Total fluid: $(6 + 8) \\text{ oz} = 14 \\text{ oz} \\times 30 \\text{ mL/oz} = 420 \\text{ mL}$."
+  },
+  {
+    "id": 31,
+    "domain": "Patient Safety & Fall Prevention",
+    "question": "A client is identified as a high fall risk upon admission. Which intervention should the nurse technician implement immediately as part of the standard care plan?",
+    "options": [
+      "Apply four-sided physical bed rails locked securely.",
+      "Sedate the client with over-the-counter sleep aids.",
+      "Ensure the bed is in its lowest position with wheels locked, call bell within reach, and non-slip footwear applied.",
+      "Darken the room completely to encourage rest."
+    ],
+    "correct": 2,
+    "rational": "Fall precautions focus on environmental safety: low bed height, locked wheels, accessible call bells, and non-slip socks."
+  },
+  {
+    "id": 32,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician is ordered to check orthostatic vital signs on an elderly client who reports dizziness. In what sequence should these measurements be taken?",
+    "options": [
+      "Standing first, then sitting, then lying down.",
+      "Sitting for 5 minutes, then standing immediately.",
+      "Standing immediately upon waking up.",
+      "Lying down (supine) for 5 minutes, then sitting with legs dangling for 1-2 minutes, then standing for 1-2 minutes, recording blood pressure and pulse at each step."
+    ],
+    "correct": 3,
+    "rational": "Orthostatic vital signs are measured sequentially starting with the client supine, then sitting, then standing, allowing rest between position changes to detect blood pressure drops."
+  },
+  {
+    "id": 33,
+    "domain": "Infection Control & Safety",
+    "question": "Which disease transmission category requires a nurse technician to wear a fit-tested N95 respirator mask before entering the client's room?",
+    "options": [
+      "Airborne precautions (e.g., Active Pulmonary Tuberculosis)",
+      "Contact precautions (e.g., C. difficile)",
+      "Droplet precautions (e.g., Influenza)",
+      "Standard precautions alone"
+    ],
+    "correct": 0,
+    "rational": "Airborne pathogens travel via microscopic droplet nuclei, requiring negative pressure rooms and particulate N95 respirator masks."
+  },
+  {
+    "id": 34,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "What is the primary difference between active range-of-motion (ROM) exercises and passive ROM exercises?",
+    "options": [
+      "Active ROM is performed exclusively by the physical therapist.",
+      "Active ROM is performed by the client independently; passive ROM is performed by the healthcare worker moving the client's joints.",
+      "Passive ROM requires client muscle contraction.",
+      "Active ROM is only done with heavy gym weights."
+    ],
+    "correct": 1,
+    "rational": "Active ROM exercises are executed by the client themselves, whereas passive ROM involves the technician or nurse moving the joints for an immobile client."
+  },
+  {
+    "id": 35,
+    "domain": "Basic Pharmacology & Administration",
+    "question": "When instilling prescribed eye drops into an adult client's eye, where should the nurse technician drop the medication?",
+    "options": [
+      "Directly onto the center of the cornea (pupil).",
+      "Into the inner corner (tear duct) of the eye.",
+      "Onto the lower conjunctival sac after gently pulling the lower lid downward.",
+      "Onto the upper eyelid skin."
+    ],
+    "correct": 2,
+    "rational": "Eye drops are instilled into the pocket formed by the lower conjunctival sac to prevent corneal damage and ensure even distribution across the eye."
+  },
+  {
+    "id": 36,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "How does 'shearing force' contribute to the development of pressure injuries in bedridden clients?",
+    "options": [
+      "By direct downward vertical pressure on the heels.",
+      "By bacterial multiplication on moist skin folds.",
+      "By excessive dryness causing cracking of the epidermis.",
+      "By parallel sliding forces where skin remains stationary against sheets while underlying bone and muscle slide downward."
+    ],
+    "correct": 3,
+    "rational": "Shearing occurs when skin stays fixed to bed linens while deeper tissue shifts with gravity (e.g., sliding down in bed), stretching and kinking local blood vessels."
+  },
+  {
+    "id": 37,
+    "domain": "Communication & Client Rights",
+    "question": "A competent adult client tells the nurse technician they wish to leave the hospital against medical advice (AMA). What is the technician's immediate responsibility?",
+    "options": [
+      "Notify the registered nurse and charge nurse immediately so proper AMA protocols and education can be completed.",
+      "Lock the client's room door from the outside.",
+      "Argue with the client and refuse to let them change clothes.",
+      "Tell the client they will be arrested if they walk out."
+    ],
+    "correct": 0,
+    "rational": "Clients have the right to refuse treatment or leave AMA; technicians must notify the RN immediately so licensed staff can address concerns and complete safety documentation."
+  },
+  {
+    "id": 38,
+    "domain": "Emergency Response & First Aid",
+    "question": "A nurse technician finds a client lying on the bathroom floor suffering a severe laceration with spurting dark blood from the forearm. What is the initial emergency action?",
+    "options": [
+      "Apply a tourniquet around the client's neck.",
+      "Apply direct firm pressure to the bleeding site with a clean cloth or sterile dressing.",
+      "Pour alcohol directly into the open spurting wound.",
+      "Run out to the parking lot to look for assistance."
+    ],
+    "correct": 1,
+    "rational": "Direct pressure with clean or sterile material over an active hemorrhage controls bleeding and stabilizes the client while emergency assistance is summoned."
+  },
+  {
+    "id": 39,
+    "domain": "Personal Care & Hygiene",
+    "question": "What is the proper method for storing a client's dentures when they are removed overnight?",
+    "options": [
+      "Wrapped loosely in a paper napkin on top of the food tray.",
+      "In a dry plastic bag exposed to room air.",
+      "In a labeled denture cup filled with cool water or denture-cleaning solution inside the bedside table.",
+      "In direct hot water to sterilize them."
+    ],
+    "correct": 2,
+    "rational": "Dentures must be stored in a labeled container filled with cool water or cleaning solution to keep them moist and prevent warping."
+  },
+  {
+    "id": 40,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client with dysphagia is receiving thickened liquids and pureed foods. During mealtime assistance, what position should the nurse technician maintain for the client?",
+    "options": [
+      "Flat supine position with a pillow under the knees.",
+      "Left lateral Sims position with the head tilted downward.",
+      "Semi-Fowler's position at 30 degrees.",
+      "High Fowler's position (90 degrees upright) maintained for at least 30 minutes post-meal."
+    ],
+    "correct": 3,
+    "rational": "Upright high Fowler's positioning uses gravity to prevent aspiration in clients with swallowing difficulties (dysphagia) and should be maintained post-meal."
+  },
+{
+    "id": 41,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician measures an apical pulse of 96 beats per minute and a radial pulse of 82 beats per minute simultaneously on an adult client. What clinical finding does this discrepancy indicate?",
+    "options": [
+      "A pulse deficit of 14 beats per minute, indicating that some ventricular contractions are too weak to produce palpable peripheral pulses.",
+      "A normal healthy cardiovascular response to mild physical rest.",
+      "An automated blood pressure cuff malfunction during measurement.",
+      "Respiratory alkalosis caused by rapid shallow breathing."
+    ],
+    "correct": 0,
+    "rational": "A pulse deficit occurs when apical heart rate exceeds radial pulse rate because weaker ventricular contractions fail to generate a palpable peripheral pulse, common in arrhythmias like atrial fibrillation."
+  },
+  {
+    "id": 42,
+    "domain": "Infection Control & Safety",
+    "question": "A nurse technician accidentally sustains a needlestick injury with a used hollow-bore needle while emptying a sharps container. What is the immediate first action required?",
+    "options": [
+      "Apply an adhesive bandage and wait until the end of the shift to report.",
+      "Wash the puncture site immediately with soap and water, encourage bleeding, and report the incident immediately to employee health/supervisor.",
+      "Squeeze the wound forcefully with bare hands to drain all blood.",
+      "Soak the finger in household bleach for 15 minutes."
+    ],
+    "correct": 1,
+    "rational": "Immediate wound cleansing with soap and water followed by prompt reporting to occupational health for post-exposure prophylaxis protocol is mandatory after sharps injuries."
+  },
+  {
+    "id": 43,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "A nurse technician is assisting a client with ambulation who has right-sided hemiparesis. On which side of the client's body should the cane be held?",
+    "options": [
+      "On the client's weaker (right) side to support the paralyzed limb directly.",
+      "Held in both hands directly in front of the chest.",
+      "On the client's stronger (left) side to provide stable wide support and balance.",
+      "Switched rapidly back and forth between hands with every step."
+    ],
+    "correct": 2,
+    "rational": "A cane is always held on the stronger side of the body to widen the base of support and distribute weight away from the affected/weaker leg."
+  },
+  {
+    "id": 44,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is asked by a licensed nurse to witness the wastage of a controlled substance narcotic. What does this signature verify?",
+    "options": [
+      "That the technician personally prescribed the medication dose.",
+      "That the technician checked the pharmacy inventory database.",
+      "That the technician administered the drug directly to the client.",
+      "That the technician observed the physical destruction or disposal of the unused portion according to protocol."
+    ],
+    "correct": 3,
+    "rational": "Witnessing narcotic wastage verifies that the unused portion of a controlled substance was properly and legally disposed of in accordance with institutional policy."
+  },
+  {
+    "id": 45,
+    "domain": "Personal Care & Hygiene",
+    "question": "When assisting a female client with a bed bath, in what direction should the nurse technician wash the client's eyes to prevent infection?",
+    "options": [
+      "From the inner canthus outward toward the ear using a clean portion of the washcloth for each eye.",
+      "From the outer corner inward toward the bridge of the nose.",
+      "In a vigorous circular rubbing motion across both eyelids simultaneously.",
+      "From the jawline upward over the eyelids."
+    ],
+    "correct": 0,
+    "rational": "Wiping eyes from the inner corner outward prevents debris and microorganisms from entering the nasolacrimal duct and contaminating the eye."
+  },
+  {
+    "id": 46,
+    "domain": "Emergency Response & First Aid",
+    "question": "A nurse technician notices a small electrical fire sparking from an oxygen concentrator cord. After rescuing the client from immediate danger, what is the next step in the RACE fire response protocol?",
+    "options": [
+      "Open all windows to air out the smoke.",
+      "Pull the nearest fire alarm station and call the facility emergency number.",
+      "Evacuate the entire building immediately without notifying anyone.",
+      "Hide under the client's bed until security arrives."
+    ],
+    "correct": 1,
+    "rational": "The RACE protocol sequence is Rescue, Alarm (pull the alarm and report), Confine/Contain, and Extinguish/Evacuate."
+  },
+  {
+    "id": 47,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client with a newly inserted nasogastric (NG) tube is scheduled for intermittent tube feedings. What is the nurse technician's priority action before each feeding?",
+    "options": [
+      "Flush the tube with 100 mL of tap water rapidly.",
+      "Clamp the tube permanently for 4 hours post-feeding.",
+      "Check tube placement and residual gastric volume as per policy, and verify head of bed elevation.",
+      "Inject 50 mL of air while listening over the lower abdomen."
+    ],
+    "correct": 2,
+    "rational": "Checking residual volumes, verifying placement markers, and ensuring the head of the bed is elevated prevent aspiration during enteral tube feedings."
+  },
+  {
+    "id": 48,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "A nurse technician is applying sequential compression devices (SCDs) to an adult client's legs. What is the primary purpose of this equipment?",
+    "options": [
+      "To treat active arterial ulcers on the feet.",
+      "To provide permanent structural support for fractured tibia bones.",
+      "To cool down warm skin and reduce lower leg swelling from infection.",
+      "To prevent deep vein thrombosis (DVT) by promoting venous return from the lower extremities."
+    ],
+    "correct": 3,
+    "rational": "SCDs apply intermittent pneumatic pressure to the legs, enhancing blood flow in deep veins and preventing venous stasis and clot formation."
+  },
+  {
+    "id": 49,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "When assessing an adult client's respiration rate, which action should the nurse technician perform to ensure an accurate, uninfluenced measurement?",
+    "options": [
+      "Count respirations immediately after taking the radial pulse without removing fingers from the site so the client remains unaware.",
+      "Announce loudly to the client that breathing is being counted.",
+      "Ask the client to hold their breath for 30 seconds while counting.",
+      "Measure breathing rates only while the client is talking on the telephone."
+    ],
+    "correct": 0,
+    "rational": "Clients alter their breathing rate consciously if they know it is being observed; transitioning seamlessly from pulse counting to respiration counting prevents this bias."
+  },
+  {
+    "id": 50,
+    "domain": "Communication & Client Rights",
+    "question": "A competent adult client tells the nurse technician they wish to leave the hospital against medical advice (AMA). What is the technician's immediate responsibility?",
+    "options": [
+      "Lock the client's room door from the outside to prevent exit.",
+      "Notify the registered nurse and charge nurse immediately so proper AMA protocols and education can be completed.",
+      "Argue with the client and refuse to let them change clothes.",
+      "Tell the client they will be arrested if they walk out."
+    ],
+    "correct": 1,
+    "rational": "Clients have the right to refuse treatment or leave AMA; technicians must notify the RN immediately so licensed staff can address concerns and complete safety documentation."
+  },
+  {
+    "id": 51,
+    "domain": "Fundamental Nursing Skills",
+    "question": "A nurse technician is assisting with a sterile dressing change by opening sterile supplies. Which action breaches sterile technique?",
+    "options": [
+      "Opening the outermost flap of a sterile package away from the body first.",
+      "Holding sterile items above waist level at all times.",
+      "Reaching across an established sterile field to place an item on the far side.",
+      "Touching only the outer 1-inch border of a sterile drape."
+    ],
+    "correct": 2,
+    "rational": "Reaching across a sterile field contaminates it because unsterile clothing or arms pass directly over the sterile surface."
+  },
+  {
+    "id": 52,
+    "domain": "Infection Control & Safety",
+    "question": "Which disease transmission category requires a nurse technician to wear a fit-tested N95 respirator mask before entering the client's room?",
+    "options": [
+      "Contact precautions (e.g., C. difficile)",
+      "Droplet precautions (e.g., Influenza)",
+      "Standard precautions alone",
+      "Airborne precautions (e.g., Active Pulmonary Tuberculosis)"
+    ],
+    "correct": 3,
+    "rational": "Airborne pathogens like tuberculosis travel via microscopic droplet nuclei, requiring negative pressure rooms and particulate N95 respirator masks."
+  },
+  {
+    "id": 53,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is asked to bring a newly dispensed medication from the pharmacy to the unit. What check must be performed?",
+    "options": [
+      "Verify the client's name and room number on the medication label against the client's identification band.",
+      "Open the packaging and taste the pill to verify quality.",
+      "Administer the medication immediately in the hallway.",
+      "Leave the medication on the bedside table unattended."
+    ],
+    "correct": 0,
+    "rational": "Matching medication labels against client identifiers is a core safety protocol to prevent administration errors."
+  },
+  {
+    "id": 54,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A nurse technician is assisting a client who has an indwelling urinary catheter. Where should the drainage bag be secured at all times?",
+    "options": [
+      "Placed directly on the client's lap during wheelchair transport.",
+      "Hung securely on the bed frame below the level of the bladder, never on the side rails or floor.",
+      "Hung on the IV pole above the level of the client's waist.",
+      "Tucked underneath the client's thigh in bed."
+    ],
+    "correct": 1,
+    "rational": "The drainage bag must always hang below bladder level to prevent urine backflow and catheter-associated urinary tract infections."
+  },
+  {
+    "id": 55,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "An adult client's automated vital sign machine reports an oxygen saturation (SpO2) of 85% on room air. What is the technician's priority action?",
+    "options": [
+      "Administer 15 L/min oxygen via non-rebreather mask independently.",
+      "Wait 2 hours before rechecking the saturation.",
+      "Verify sensor placement (check for cold fingers, nail polish, or poor signal), reposition the probe, and notify the registered nurse immediately.",
+      "Turn off the pulse oximeter and document normal findings."
+    ],
+    "correct": 2,
+    "rational": "Low SpO2 readings require checking probe placement and physiological factors (poor perfusion) before notifying the RN for prompt clinical intervention."
+  },
+  {
+    "id": 56,
+    "domain": "Personal Care & Hygiene",
+    "question": "When providing foot care for a client with diabetes mellitus, which nursing action is contraindicated for the nurse technician?",
+    "options": [
+      "Washing feet in warm (not hot) water and drying thoroughly between toes.",
+      "Applying moisturizing lotion to the tops and bottoms of feet while avoiding spaces between toes.",
+      "Inspecting feet daily for redness, cuts, or abrasions.",
+      "Using sharp scissors or razor blades to cut thickened toenails and corns independently."
+    ],
+    "correct": 3,
+    "rational": "Clients with diabetes have impaired peripheral circulation and neuropathy; cutting nails with sharp instruments must be performed by podiatrists or licensed nurses to prevent ulcers."
+  },
+  {
+    "id": 57,
+    "domain": "Emergency Response & First Aid",
+    "question": "A client begins experiencing a generalized tonic-clonic seizure while sitting in a bedside chair. What is the immediate priority action for the nurse technician?",
+    "options": [
+      "Lower the client safely to the floor, protect their head from injury, loosen tight clothing, and turn them onto their side.",
+      "Hold the client's arms and legs down rigidly to stop shaking.",
+      "Force a metal spoon between the client's teeth.",
+      "Leave the room to find a physician."
+    ],
+    "correct": 0,
+    "rational": "Seizure safety protocols require protecting the client from environmental injury, lowering them to the floor, turning to the side to keep airway clear, and never forcing objects into the mouth."
+  },
+  {
+    "id": 58,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "What is the primary purpose of applying an alternating pressure mattress overlay for a bedridden client at high risk for pressure ulcers?",
+    "options": [
+      "To eliminate the need for manual repositioning every two hours.",
+      "To inflate and deflate different air cells continuously, redistributing pressure away from vulnerable bony prominences.",
+      "To warm the client's skin and increase body temperature.",
+      "To administer localized heat therapy for muscle spasms."
+    ],
+    "correct": 1,
+    "rational": "Alternating pressure mattresses reduce prolonged localized pressure by cyclically inflating and deflating air chambers, though manual turning remains necessary."
+  },
+  {
+    "id": 59,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "A nurse technician is assisting a client with ambulation who suddenly feels dizzy and begins to fall. What is the correct maneuver?",
+    "options": [
+      "Pull the client's arm violently upward to jerk them upright.",
+      "Let go of the client immediately to avoid falling together.",
+      "Assume a wide base of support, press one leg against the client's leg, and slide the client down your body to the floor safely.",
+      "Catch the client by their neck."
+    ],
+    "correct": 2,
+    "rational": "Controlling a fall involves keeping the client close, sliding them down your leg to the floor, and protecting their head to prevent severe injury."
+  },
+  {
+    "id": 60,
+    "domain": "Communication & Client Rights",
+    "question": "A nurse technician notices a colleague posting a photograph of a hospital client's diagnostic scan on personal social media. What ethical and professional duty applies?",
+    "options": [
+      "Join the social media post and leave a positive comment.",
+      "Ignore the action because it does not affect patient care directly.",
+      "Ask the colleague to share the photo privately.",
+      "Report the confidentiality and privacy breach immediately to the nurse manager or nursing supervisor."
+    ],
+    "correct": 3,
+    "rational": "Sharing patient images or health data online violates client privacy laws (HIPAA/GDPR) and professional codes of conduct, requiring immediate reporting."
+  },
+{
+    "id": 61,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician is preparing to take an adult client's blood pressure manually. What is the correct consequence if the selected cuff bladder is much too narrow for the client's arm?",
+    "options": [
+      "It will produce a falsely high blood pressure reading because excessive pressure is required to collapse the large brachial artery.",
+      "It will produce a falsely low blood pressure reading.",
+      "It will have no effect on systolic or diastolic measurements.",
+      "It will cause the client's heart rate to drop instantly."
+    ],
+    "correct": 0,
+    "rational": "A cuff that is too narrow fails to transmit pressure effectively to the underlying artery, requiring higher inflation pressure and resulting in a falsely elevated blood pressure reading."
+  },
+  {
+    "id": 62,
+    "domain": "Infection Control & Safety",
+    "question": "When entering a client's room under Contact Precautions, what personal protective equipment (PPE) must the nurse technician don?",
+    "options": [
+      "N95 respirator mask and full-face shield only",
+      "Sterile surgical gown and double sterile gloves",
+      "Gown and gloves for all interactions involving contact with the client or their immediate environment",
+      "Shoe covers and hair bouffant cap exclusively"
+    ],
+    "correct": 2,
+    "rational": "Contact precautions require clean non-sterile gowns and gloves upon room entry to prevent transmission of epidemiologically important pathogens via skin or surface contact."
+  },
+  {
+    "id": 63,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When assisting a bedridden client to move upward in bed using a friction-reducing draw sheet, what is the primary role of the second healthcare worker?",
+    "options": [
+      "Stand at the foot of the bed and lift the client's legs by the ankles.",
+      "Coordinate the lift on the opposite side of the bed to lift the client's torso, reducing friction and shearing forces.",
+      "Observe the procedure from the hallway without touching the client.",
+      "Hold the call bell cord tightly."
+    ],
+    "correct": 1,
+    "rational": "Using a draw sheet with two staff members distributes weight evenly and lifts the client's body off the mattress surface, eliminating skin-damaging friction and shear."
+  },
+  {
+    "id": 64,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is asked by a licensed nurse to verify medication administration records. What are considered acceptable unique patient identifiers?",
+    "options": [
+      "Client's room number and bed letter assignment",
+      "Client's full legal name and date of birth checked against their ID wristband",
+      "Client's primary diagnosis and attending physician's name",
+      "Client's home address and telephone number"
+    ],
+    "correct": 1,
+    "rational": "National Patient Safety Goals mandate using two unique identifiers (full legal name and date of birth) compared against the ID band before administering care or medications."
+  },
+  {
+    "id": 65,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "Which clinical observation indicates that a surgical wound healing by secondary intention is forming healthy granulation tissue?",
+    "options": [
+      "Thick green purulent drainage and a strong foul odor",
+      "Bright pink or red, moist, beefy-looking tissue filling the open wound base",
+      "Dry black leathery eschar covering the entire wound bed",
+      "Severe expanding purple bruising and tissue necrosis"
+    ],
+    "correct": 1,
+    "rational": "Healthy granulation tissue is vascular, pinkish-red, and moist, indicating active cellular proliferation and normal wound healing."
+  },
+  {
+    "id": 66,
+    "domain": "Communication & Client Rights",
+    "question": "A client tells the nurse technician they do not understand the potential side effects of a newly prescribed oral medication. What is the appropriate response?",
+    "options": [
+      "Explain detailed cellular enzyme pathways yourself.",
+      "Tell the client medication side effects are completely irrelevant.",
+      "Acknowledge the client's concern and notify the registered nurse or pharmacist to provide thorough education.",
+      "Advise the client to throw the pills into the trash can."
+    ],
+    "correct": 2,
+    "rational": "Medication education is within the scope of practice for licensed nurses and pharmacists; technicians should support the client and alert the RN."
+  },
+  {
+    "id": 67,
+    "domain": "Emergency Response & First Aid",
+    "question": "A nurse technician smells smoke and discovers a small wastebasket fire in a utility room. After rescuing anyone in immediate danger, what is the second step in the RACE protocol?",
+    "options": [
+      "Alarm (pull the fire alarm station and call the facility emergency number)",
+      "Confine the fire by opening all hallway doors wide",
+      "Extinguish the fire without notifying anyone",
+      "Run out of the building immediately to the parking lot"
+    ],
+    "correct": 0,
+    "rational": "The RACE protocol sequence is Rescue, Alarm, Confine, and Extinguish/Evacuate."
+  },
+  {
+    "id": 68,
+    "domain": "Personal Care & Hygiene",
+    "question": "When assisting a conscious client with oral hygiene, at what angle should the toothbrush bristles be placed against the gumline?",
+    "options": [
+      "90-degree angle perpendicular to the tooth surface",
+      "45-degree angle pointing toward the gumline",
+      "180-degree angle flat along the tongue surface",
+      "15-degree angle facing the roof of the mouth"
+    ],
+    "correct": 1,
+    "rational": "Brushing at a 45-degree angle gently removes dental plaque along the gingival sulcus without traumatizing delicate gum tissues."
+  },
+  {
+    "id": 69,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "A nurse technician is collecting a sputum specimen for laboratory analysis. When is the optimal time of day to obtain an accurate sample?",
+    "options": [
+      "Immediately after eating a heavy lunch",
+      "Early in the morning upon waking, before the client eats or drinks",
+      "Right before bedtime after brushing teeth with mint mouthwash",
+      "Immediately following physical exercise"
+    ],
+    "correct": 1,
+    "rational": "Early morning sputum collection yields concentrated respiratory secretions accumulated overnight in the bronchial tree before oral intake interferes."
+  },
+  {
+    "id": 70,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client on a sodium-restricted diet for hypertension asks about food choices. Which food item should the nurse technician advise the client to avoid?",
+    "options": [
+      "Fresh steamed broccoli without butter",
+      "Baked skinless chicken breast with herbs",
+      "Processed canned soups and cured deli meats",
+      "Fresh apples and bananas"
+    ],
+    "correct": 2,
+    "rational": "Canned soups, processed items, and cured meats contain very high levels of hidden sodium and are restricted on low-sodium diets."
+  },
+  {
+    "id": 71,
+    "domain": "Patient Safety & Fall Prevention",
+    "question": "What is the primary purpose of applying a bed exit sensor alarm pad for a confused inpatient client?",
+    "options": [
+      "To punish the client for attempting to get out of bed",
+      "To alert staff members immediately when an unassisted client attempts to rise, preventing falls",
+      "To replace the need for physical nursing observations",
+      "To lock the bed wheels automatically"
+    ],
+    "correct": 1,
+    "rational": "Bed exit alarms provide proactive, non-punitive notification to staff, enabling prompt assistance before a fall occurs."
+  },
+  {
+    "id": 72,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "An adult client's resting respiration rate is measured at 8 breaths per minute. How should this breathing rate be documented?",
+    "options": [
+      "Tachypnea",
+      "Bradypnea",
+      "Apnea",
+      "Eupnea"
+    ],
+    "correct": 1,
+    "rational": "Bradypnea refers to an abnormally slow respiratory rate below 12 breaths per minute in an adult client."
+  },
+  {
+    "id": 73,
+    "domain": "Infection Control & Safety",
+    "question": "What is the correct sequence for putting on (donning) personal protective equipment (PPE) before entering an isolation room?",
+    "options": [
+      "Gloves first, then gown, then mask, then goggles",
+      "Gown first, then mask or respirator, then goggles or face shield, and gloves last (extending over gown cuffs)",
+      "Mask first, then gloves, then gown",
+      "All items can be donned in any random order"
+    ],
+    "correct": 1,
+    "rational": "The standard donning sequence ensures full barrier protection: Gown first, Mask/Respirator second, Goggles/Face Shield third, and Gloves last over cuff edges."
+  },
+  {
+    "id": 74,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When transferring a client from a bed to a wheelchair using a pivot technique, where should the nurse technician position their feet?",
+    "options": [
+      "Close together directly underneath the technician's center of gravity",
+      "With a wide base of support, placing feet apart with one foot positioned slightly forward in the direction of transfer",
+      "Kneeling on the floor beside the bed mattress",
+      "Crossed tightly behind the client's legs"
+    ],
+    "correct": 1,
+    "rational": "A wide base of support with staggered feet provides maximum stability, leverage, and balance during a pivot transfer."
+  },
+  {
+    "id": 75,
+    "domain": "Basic Pharmacology & Administration",
+    "question": "When assisting a client with using a metered-dose inhaler (MDI), why is the use of a spacer (valved holding chamber) recommended?",
+    "options": [
+      "To increase the speed of medication delivery directly into the stomach",
+      "To trap aerosolized medication particles and allow the client to inhale them smoothly, reducing drug deposition in the mouth/throat",
+      "To eliminate the need for shaking the canister",
+      "To allow multiple different medications to be mixed together in one puff"
+    ],
+    "correct": 1,
+    "rational": "Spacers slow aerosol velocity and trap large particles, improving deep lung delivery while preventing oral candidiasis and unpleasant taste."
+  },
+  {
+    "id": 76,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "What is the primary clinical objective of applying a hydrocolloid dressing to a clean Stage 2 pressure injury?",
+    "options": [
+      "To absorb heavy purulent drainage and pack deep sinus tracts",
+      "To provide a moist, occlusive healing environment that protects the wound bed and autolytically debrides necrotic tissue",
+      "To bake and dry out the wound surface completely",
+      "To deliver systemic antibiotic therapy directly"
+    ],
+    "correct": 1,
+    "rational": "Hydrocolloid dressings maintain a moist wound-healing environment which accelerates epithelialization and facilitates autolytic debridement."
+  },
+  {
+    "id": 77,
+    "domain": "Communication & Client Rights",
+    "question": "A nurse technician overhears two staff members gossiping about a client's personal lifestyle in the nurses' station. How should the technician handle this breach?",
+    "options": [
+      "Join in the conversation to build rapport with peers",
+      "Politely remind staff members that discussing client details in shared areas violates confidentiality and professional standards",
+      "Record the conversation on a personal smartphone",
+      "Laugh and walk away without saying anything"
+    ],
+    "correct": 1,
+    "rational": "Professional ethics require healthcare workers to uphold client privacy and gently correct or report breaches of confidentiality."
+  },
+  {
+    "id": 78,
+    "domain": "Emergency Response & First Aid",
+    "question": "A nurse technician discovers a small wastebasket fire in a patient room. After removing the client, what type of fire extinguisher should be used on an ordinary paper and trash fire?",
+    "options": [
+      "Class A fire extinguisher",
+      "Class B fire extinguisher exclusively for oil",
+      "Class C electrical extinguisher only",
+      "Water bucket without checking classification"
+    ],
+    "correct": 0,
+    "rational": "Class A fire extinguishers are designed for ordinary combustible materials such as paper, wood, cloth, and trash."
+  },
+  {
+    "id": 79,
+    "domain": "Personal Care & Hygiene",
+    "question": "When assisting a client with hair care, the technician discovers severe matting and tangling. What is the correct way to comb out tangled hair?",
+    "options": [
+      "Comb forcefully from the scalp downward to the hair ends",
+      "Hold the hair section near the scalp to prevent pulling, and gently comb starting from the ends working upward toward the scalp",
+      "Cut the tangled hair off with medical scissors without permission",
+      "Wash hair with cold water and dry with high heat"
+    ],
+    "correct": 1,
+    "rational": "Starting at the hair ends while supporting hair near the scalp prevents painful pulling and scalp trauma during detangling."
+  },
+  {
+    "id": 80,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client has a liquid fluid restriction of 1,200 mL per 24 hours. How should the nurse technician manage fluid distribution during the day shift (7 AM - 3 PM)?",
+    "options": [
+      "Provide the entire 1,200 mL allotment during breakfast",
+      "Allocate approximately 50% (600 mL) during the day shift, maintaining communication with the rest of the team",
+      "Deny all liquids during the day shift and give 1,200 mL at night",
+      "Allow the client unlimited fluids until 2 PM"
+    ],
+    "correct": 1,
+    "rational": "Fluid restrictions are divided proportionally across shifts (typically 50% day, 30-40% evening, 10-20% night) to ensure compliance and client comfort."
+  },
+{
+    "id": 81,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "A nurse technician is applying a pediatric urine collection bag to an infant client. What is an essential skin preparation step before attaching the adhesive bag?",
+    "options": [
+      "Ensure the perineal and pubic skin is thoroughly cleansed, rinsed, and completely dried so the adhesive adheres securely without leaking.",
+      "Apply thick layers of petroleum jelly over the entire perineum.",
+      "Soak the skin in warm soapy water for 30 minutes.",
+      "Dust the skin with baby powder."
+    ],
+    "correct": 0,
+    "rational": "Pediatric urine bags require clean, completely dry skin to create a waterproof seal and prevent leakage during collection."
+  },
+  {
+    "id": 82,
+    "domain": "Personal Care & Hygiene",
+    "question": "When performing post-mortem care for a deceased adult client, what is the standard practice regarding the client's body and positioning?",
+    "options": [
+      "Leave the client sitting upright in a wheelchair with arms crossed.",
+      "Place the body in a supine position with arms straight at the sides or palms down, head elevated slightly on one pillow to prevent facial discoloration, and dentures inserted if possible.",
+      "Place the client in a prone position face down.",
+      "Remove all identification tags immediately."
+    ],
+    "correct": 1,
+    "rational": "Post-mortem care maintains a dignified supine posture with slight head elevation to prevent blood pooling in the face and head, ensuring natural appearance."
+  },
+  {
+    "id": 83,
+    "domain": "Fundamental Nursing Skills",
+    "question": "A nurse technician is assisting a postoperative client with using an incentive spirometer. What coaching instruction should be given to maximize respiratory expansion?",
+    "options": [
+      "Blow into the mouthpiece as hard and fast as possible.",
+      "Suck on the mouthpiece like a drinking straw while lying flat.",
+      "Take a slow, deep breath in through the mouth to raise the piston/ball, hold the breath for 3 to 5 seconds, and then exhale slowly.",
+      "Hold your breath continuously for 5 minutes without using the device."
+    ],
+    "correct": 2,
+    "rational": "Incentive spirometry requires slow, sustained deep inhalation that keeps alveoli open, prevents atelectasis, and promotes lung expansion."
+  },
+  {
+    "id": 84,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client has a continuous bladder irrigation (CBI) system in place following prostate surgery. The nurse technician notices that the urinary drainage tubing suddenly contains dark red blood clots and flow has stopped. What is the immediate required action?",
+    "options": [
+      "Ignore the blockage and wait until the end of the shift.",
+      "Disconnect the catheter tubing completely from the drainage bag.",
+      "Slow down the irrigation fluid infusion rate to zero.",
+      "Notify the registered nurse immediately so manual bladder irrigation or troubleshooting can be performed."
+    ],
+    "correct": 3,
+    "rational": "Blood clots blocking a CBI system can cause acute bladder distension and hemorrhage; technicians must alert the RN immediately for clinical intervention."
+  },
+  {
+    "id": 85,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "When applying a warm moist compress to an inflamed injection site, what is the recommended maximum duration of application to prevent the rebound phenomenon (tissue ischemia and vasodilation reversal)?",
+    "options": [
+      "15 to 20 minutes",
+      "2 hours continuously",
+      "6 hours overnight",
+      "24 hours straight"
+    ],
+    "correct": 0,
+    "rational": "Heat applied beyond 20 to 30 minutes triggers a reflex vasoconstriction (rebound phenomenon) that impairs tissue perfusion and risks thermal injury."
+  },
+  {
+    "id": 86,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician needs to measure the height of a bedridden client who cannot stand. How should this measurement be accurately obtained?",
+    "options": [
+      "Estimate the height by looking at the client from the doorway.",
+      "Use a non-stretch measuring tape to measure the client flat in bed from the crown of the head to the heel of the foot while the body is fully aligned.",
+      "Ask the client what their height was 20 years ago.",
+      "Measure only the length of the client's arm."
+    ],
+    "correct": 1,
+    "rational": "Bedridden height measurement is obtained by keeping the client flat and fully extended in bed, measuring linearly from head crown to heel."
+  },
+  {
+    "id": 87,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "What is a crucial rule when applying anti-embolism stockings (TED hose) to ensure they do not act as tourniquets?",
+    "options": [
+      "Roll the stockings down into tight bands around the ankles.",
+      "Soak the stockings in hot water before pulling them on.",
+      "Ensure the stockings are applied smoothly without wrinkles, twists, or bunched bands.",
+      "Fold the top band over twice tightly below the knee."
+    ],
+    "correct": 2,
+    "rational": "TED hose must fit smoothly without wrinkles or rolled bands, which can constrict blood flow and precipitate venous stasis or thrombosis."
+  },
+  {
+    "id": 88,
+    "domain": "Patient Safety & Fall Prevention",
+    "question": "A confused client repeatedly tries to pull out their indwelling urinary catheter. What is an appropriate non-restraint nursing intervention the technician can support?",
+    "options": [
+      "Tie the client's hands tightly to the bed frame using gauze.",
+      "Apply four-sided side rails locked securely.",
+      "Scold the client loudly for touching medical equipment.",
+      "Apply a protective net sleeve / protective mitt over the client's hands and notify the RN."
+    ],
+    "correct": 3,
+    "rational": "Protective hand mitts prevent accidental self-extubation or device removal without relying on restrictive physical limb restraints."
+  },
+  {
+    "id": 89,
+    "domain": "Fundamental Nursing Skills",
+    "question": "A nurse technician is assisting a physician with a lumbar puncture procedure. What client position is standard for this procedure?",
+    "options": [
+      "Lateral recumbent fetal position with knees drawn up to the abdomen and chin tucked to the chest",
+      "Prone flat on the abdomen with face turned down",
+      "High Fowler's position upright at 90 degrees",
+      "Trendelenburg position with feet elevated"
+    ],
+    "correct": 0,
+    "rational": "The fetal position arches the client's back, widening the intervertebral spaces for safe needle insertion during a lumbar puncture."
+  },
+  {
+    "id": 90,
+    "domain": "Basic Pharmacology & Administration",
+    "question": "Prior to taking a client to the operating room for scheduled surgery, what preoperative responsibility is required regarding client belongings?",
+    "options": [
+      "Allow the client to wear all gold jewelry and wristwatches into the surgical suite.",
+      "Remove dentures, hearing aids, wigs, contact lenses, and jewelry, and secure them according to facility policy.",
+      "Store all valuables in the client's bed sheets.",
+      "Give all jewelry to the housekeeper."
+    ],
+    "correct": 1,
+    "rational": "Preoperative protocols require removing prosthetics, metal objects, and jewelry to prevent electrical burns, airway obstruction, or loss during surgery."
+  },
+  {
+    "id": 91,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "When monitoring a client with a fiberglass leg cast, which assessment finding indicates potential neurovascular compromise (the 'P's of compartment syndrome)?",
+    "options": [
+      "Warm pink toes with brisk capillary refill",
+      "Equal bilateral pulse strength in both feet",
+      "Severe increasing pain, pallor, pulselessness, paresthesia (numbness), and paralysis in the toes",
+      "Normal itching inside the cast"
+    ],
+    "correct": 2,
+    "rational": "Increasing unyielding pain, pallor, absent pulses, tingling, and paralysis signal acute compartment syndrome, requiring immediate emergency reporting."
+  },
+  {
+    "id": 92,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "When preparing a client's skin for a 12-lead electrocardiogram (ECG/EKG) electrode placement, what step ensures optimal signal tracing?",
+    "options": [
+      "Apply thick layers of moisturizing lotion to electrode sites.",
+      "Shave thick chest hair if necessary and clean skin oils with alcohol to ensure electrode adhesion and electrical contact.",
+      "Soak the electrode sticky pads in water.",
+      "Attach electrodes directly over thick clothing."
+    ],
+    "correct": 1,
+    "rational": "Skin oils and chest hair impede electrode contact, causing artifact; cleansing with alcohol ensures clear ECG electrical signals."
+  },
+  {
+    "id": 93,
+    "domain": "Infection Control & Safety",
+    "question": "How should regulated medical waste contaminated with liquid blood be disposed of in a hospital setting?",
+    "options": [
+      "Placed into a puncture-resistant, leak-proof biohazard bag bearing the biohazard symbol.",
+      "Thrown into ordinary office paper trash cans.",
+      "Washed down the bathroom sink drain.",
+      "Stored in regular pillowcases."
+    ],
+    "correct": 0,
+    "rational": "Liquid blood and saturated items must be discarded in designated biohazard containers to prevent infectious exposure and regulatory non-compliance."
+  },
+  {
+    "id": 94,
+    "domain": "Communication & Client Rights",
+    "question": "A nurse technician is assisting a visually impaired client with mealtime. What technique promotes client independence?",
+    "options": [
+      "Feed the client every bite by force without speaking.",
+      "Describe the food locations on the tray using a 'clock face' orientation (e.g., 'potatoes are at 9 o'clock, chicken is at 12 o'clock').",
+      "Mix all foods together into a single bowl.",
+      "Leave the room and let the client guess what is on the tray."
+    ],
+    "correct": 1,
+    "rational": "Using a clock-face description helps visually impaired clients locate food items independently, supporting dignity and autonomy."
+  },
+  {
+    "id": 95,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "When measuring a client's abdominal girth (circumference) to monitor for fluid retention (ascites), what is the correct anatomical landmark for tape placement?",
+    "options": [
+      "Across the mid-chest over the sternum",
+      "Around the mid-thigh",
+      "At the level of the umbilicus (belly button)",
+      "Across the forehead"
+    ],
+    "correct": 2,
+    "rational": "Abdominal girth measurements must be taken consistently at the level of the umbilicus to ensure accurate comparative tracking of ascites or distension."
+  },
+  {
+    "id": 96,
+    "domain": "Personal Care & Hygiene",
+    "question": "When assisting a client onto a standard bedpan, what mechanical adjustment can the nurse technician make to maximize client comfort and reduce strain?",
+    "options": [
+      "Leave the bed completely flat at 0 degrees.",
+      "Lift the client's legs by the ankles.",
+      "Roll the client onto their stomach.",
+      "Elevate the head of the bed slightly (to 30-45 degrees) after the bedpan is positioned, unless contraindicated."
+    ],
+    "correct": 3,
+    "rational": "Elevating the head of the bed slightly mimics natural upright elimination posture and reduces physical strain during bedpan use."
+  },
+  {
+    "id": 97,
+    "domain": "Emergency Response & First Aid",
+    "question": "A nurse technician discovers that a sterile dressing package has become damp from spilled water on the supply cart. What is the correct action?",
+    "options": [
+      "Discard or return the damp package immediately because moisture compromises sterility (strike-through contamination).",
+      "Wipe the outside of the wrapper with a dry tissue and use it.",
+      "Place the package under a heat lamp for 2 minutes.",
+      "Use the dressing only if nobody is watching."
+    ],
+    "correct": 0,
+    "rational": "Moisture creates a permeable path for bacteria to enter sterile packaging (strike-through), rendering wet supplies contaminated."
+  },
+  {
+    "id": 98,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client with diabetes mellitus is alert and conscious but reports sudden sweating, tremors, palpitations, and dizziness. What complication should the nurse technician suspect?",
+    "options": [
+      "Severe hyperglycemia (high blood sugar)",
+      "Hypoglycemia (low blood sugar), requiring immediate confirmation and reporting to the RN for fast-acting carbohydrate administration.",
+      "Normal physiological resting state",
+      "Hypertensive crisis"
+    ],
+    "correct": 1,
+    "rational": "Sweating, tremors, and dizziness are classic adrenergic signs of hypoglycemia, which require prompt verification and treatment."
+  },
+  {
+    "id": 99,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When performing rescue breathing using a bag-valve-mask (BVM) device during adult CPR as a trained rescuer, what is the proper delivery technique?",
+    "options": [
+      "Squeeze the bag as fast as possible continuously.",
+      "Deliver breaths only when the client is coughing.",
+      "Deliver 1 breath every 6 seconds (10 breaths per minute) while ensuring visible chest rise.",
+      "Pump the bag continuously without chest compressions."
+    ],
+    "correct": 2,
+    "rational": "During CPR with an advanced airway or bag-valve-mask, ventilations are delivered at a rate of 1 breath every 6 seconds to avoid hyperventilation."
+  },
+  {
+    "id": 100,
+    "domain": "Basic Pharmacology & Administration",
+    "question": "A nurse technician is assisting with fluid balance tracking and notes that a client consumed 4 ounces of gelatin, 6 ounces of clear broth, and 2 ounces of ice chips. What is the total calculated fluid intake in mL?",
+    "options": [
+      "120 mL",
+      "240 mL",
+      "300 mL",
+      "330 mL"
+    ],
+    "correct": 3,
+    "rational": "Calculations: Gelatin ($4 \\text{ oz} \\times 30 = 120 \\text{ mL}$), Broth ($6 \\text{ oz} \\times 30 = 180 \\text{ mL}$), Ice chips ($2 \\text{ oz} \\times 30 / 2 = 30 \\text{ mL}$). Total: $120 + 180 + 30 = 330 \\text{ mL}$."
+  },
+{
+    "id": 101,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "A nurse technician is assisting with logrolling a client who has suspected spinal trauma. What is the essential mechanical rule during this procedure?",
+    "options": [
+      "Twist the client's hips rapidly while keeping shoulders stationary.",
+      "Allow the client's head to hang freely over the edge of the bed.",
+      "Keep the client's body in strict alignment, moving the head, torso, and limbs simultaneously as a single unit with the help of multiple staff members.",
+      "Permit the client to sit upright independently during the turn."
+    ],
+    "correct": 2,
+    "rational": "Logrolling requires maintaining strict spinal column alignment at all times, turning the entire body simultaneously as a unit to prevent vertebral injury."
+  },
+  {
+    "id": 102,
+    "domain": "Basic Pharmacology & Administration",
+    "question": "When applying prescribed medicated ophthalmic ointment into an adult client's eye, what is the correct technique?",
+    "options": [
+      "Squeeze a thin ribbon of ointment along the inner edge of the lower conjunctival sac from the inner canthus outward, avoiding direct contact with the tube tip.",
+      "Apply the ointment directly over the center of the cornea.",
+      "Rub the ointment vigorously into the closed eyelids.",
+      "Place the ointment inside the upper eyelid only."
+    ],
+    "correct": 0,
+    "rational": "Ophthalmic ointments are applied along the lower conjunctival sac from inner to outer canthus without touching the eye with the tube to prevent contamination or scratching."
+  },
+  {
+    "id": 103,
+    "domain": "Communication & Client Rights",
+    "question": "An adult child calls the nursing station asking for details regarding their parent's recent laboratory test results. How should the nurse technician respond?",
+    "options": [
+      "Read the lab values over the phone immediately.",
+      "Politely explain privacy guidelines, decline to provide medical details over the phone without verified consent, and direct the caller to the registered nurse or physician.",
+      "Ask the caller for their credit card information.",
+      "Tell the caller to break into the hospital records room."
+    ],
+    "correct": 1,
+    "rational": "Patient privacy laws prohibit disclosing health data to unverified callers over the phone; inquiries must be directed to licensed staff following verification."
+  },
+  {
+    "id": 104,
+    "domain": "Emergency Response & First Aid",
+    "question": "When attaching automated external defibrillator (AED) adhesive pads to an adult client in cardiac arrest, where should the pads be placed?",
+    "options": [
+      "Both pads placed tightly together in the center of the abdomen.",
+      "One pad on the forehead and one pad on the left heel.",
+      "Directly over clothing on the stomach.",
+      "Upper right chest (below the right clavicle) and lower left chest (apex/mid-axillary line)."
+    ],
+    "correct": 3,
+    "rational": "Standard AED pad placement for adults is upper right chest and lower left lateral chest to allow current to travel directly across the heart muscle."
+  },
+  {
+    "id": 105,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "During a 24-hour urine specimen collection, the client accidentally discards one urine sample in the bathroom toilet. What action must the nurse technician take?",
+    "options": [
+      "Ignore the missed collection because one sample does not matter.",
+      "Guess the missing urine volume and write it on the container.",
+      "Notify the laboratory and restart the entire 24-hour collection period from the beginning.",
+      "Send the incomplete container immediately to the blood bank."
+    ],
+    "correct": 2,
+    "rational": "A 24-hour urine collection requires absolute continuity; missing even a single void invalidates the test and requires restarting the collection."
+  },
+  {
+    "id": 106,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client is prescribed a dysphagia diet with 'nectar-thick' liquids. How is nectar-thick consistency best described?",
+    "options": [
+      "Liquids that are thicker than water, flowing like heavy fruit nectar or vegetable juice, easily pourable.",
+      "Solid ice cream frozen completely.",
+      "Thin clear water without any modification.",
+      "Paste-like pudding consistency requiring a spoon."
+    ],
+    "correct": 0,
+    "rational": "Nectar-thick liquids flow like heavy fruit nectar (e.g., apricot nectar or tomato juice), providing enough viscosity to slow swallowing and prevent aspiration in dysphagia."
+  },
+  {
+    "id": 107,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When transferring a non-ambulatory client from a bed to a stretcher (gurney) using a lateral slide board, what is a primary safety requirement?",
+    "options": [
+      "Leave both the bed and stretcher wheel brakes unlocked so they roll freely.",
+      "Ensure wheels on both the bed and stretcher are securely locked, use adequate personnel, and bridge the gap with the slide board.",
+      "Ask the client to jump across the gap independently.",
+      "Lift the client entirely by their arms without assistance."
+    ],
+    "correct": 1,
+    "rational": "Lateral transfers require locked wheels on both surfaces, a slide board to bridge gaps, and sufficient staff to slide the client safely without friction injury."
+  },
+  {
+    "id": 108,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "What is the primary clinical purpose of applying heel suspension boots to a bedridden, immobile client?",
+    "options": [
+      "To accelerate bone growth in the lower leg.",
+      "To keep the client's feet warm in air-conditioned rooms.",
+      "To increase walking speed during physical therapy.",
+      "To elevate the heels completely off the mattress surface, eliminating pressure and preventing heel pressure ulcers."
+    ],
+    "correct": 3,
+    "rational": "Heels are highly vulnerable to pressure necrosis; heel suspension boots float the heel entirely off the bed, relieving pressure and shear forces."
+  },
+  {
+    "id": 109,
+    "domain": "Communication & Client Rights",
+    "question": "A client becomes verbally aggressive, shouting demands and pacing the room. What is the initial de-escalation response for the nurse technician?",
+    "options": [
+      "Remain calm, maintain a safe distance, speak in a low reassuring tone, and notify the registered nurse and security immediately.",
+      "Shout back angrily to establish dominance.",
+      "Lock the room door from the outside and walk away.",
+      "Argue about hospital rules."
+    ],
+    "correct": 0,
+    "rational": "De-escalation protocols prioritize personal safety, calm demeanor, non-threatening posture, and alerting licensed nursing staff and security."
+  },
+  {
+    "id": 110,
+    "domain": "Emergency Response & First Aid",
+    "question": "When operating a fire extinguisher to put out a small trash fire using the PASS method, what motion should be used with the nozzle?",
+    "options": [
+      "Spraying in a rapid circular upward spiral.",
+      "Holding the nozzle completely still in one spot.",
+      "Sweeping the nozzle side to side at the base of the fire until extinguished.",
+      "Pointing the nozzle toward the ceiling."
+    ],
+    "correct": 2,
+    "rational": "The 'Sweep' step in PASS involves moving the extinguisher nozzle side to side across the base of the fire to smother the fuel source effectively."
+  },
+  {
+    "id": 111,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A nurse technician checks residual volume before a scheduled enteral tube feeding and obtains 250 mL of dark fluid. What is the appropriate immediate action?",
+    "options": [
+      "Force the 250 mL residual back into the stomach quickly and double the feeding rate.",
+      "Stop the feeding temporarily, check facility guidelines regarding high residual thresholds, and notify the registered nurse immediately.",
+      "Pour the residual fluid down the sink drain.",
+      "Administer oral water to dilute the residual."
+    ],
+    "correct": 1,
+    "rational": "High residual volumes indicate delayed gastric emptying and aspiration risk; technicians must pause feeds and alert the RN per institutional threshold protocols."
+  },
+  {
+    "id": 112,
+    "domain": "Infection Control & Safety",
+    "question": "A nurse technician notices that an electronic vital sign monitor has a cracked power cord exposing bare electrical wires. What action should be taken?",
+    "options": [
+      "Wrap the cracked cord with ordinary transparent scotch tape.",
+      "Plug the frayed cord into the wall outlet immediately to test functionality.",
+      "Ignore the damage because housekeeping will notice it next week.",
+      "Tag the equipment as broken/out-of-service, remove it from clinical use immediately, and report it to biomedical engineering."
+    ],
+    "correct": 3,
+    "rational": "Damaged electrical equipment poses severe shock and fire hazards; standard safety protocol requires taking the item out of service and tagging it for repair."
+  },
+  {
+    "id": 113,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "When selecting a manual blood pressure cuff for an adult client, what physical rule ensures correct cuff size selection?",
+    "options": [
+      "The cuff bladder width should cover approximately 40% of the upper arm circumference, and the length should encircle at least 80% of the arm.",
+      "The cuff should cover the client's entire forearm.",
+      "Any cuff size can be used regardless of arm dimensions.",
+      "The cuff must be wrapped tightly around the client's wrist."
+    ],
+    "correct": 0,
+    "rational": "Accurate blood pressure measurement requires a cuff bladder width of 40% and length of 80% of the upper arm circumference to ensure correct arterial compression."
+  },
+  {
+    "id": 114,
+    "domain": "Infection Control & Safety",
+    "question": "How is negative airflow verified in an Airborne Infection Isolation Room (AIIR) housing a client with pulmonary tuberculosis?",
+    "options": [
+      "By listening for loud vacuum noises in the hallway.",
+      "By checking that air blows outward into the hallway whenever the door opens.",
+      "By observing smoke drift under the closed door into the client's room, confirming inward directional airflow.",
+      "By measuring room humidity levels."
+    ],
+    "correct": 2,
+    "rational": "Negative pressure rooms pull air inward when doors open, preventing airborne droplet nuclei from escaping into shared hospital corridors; smoke tests confirm inward flow."
+  },
+  {
+    "id": 115,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When transporting a client in a wheelchair down a steep hospital ramp, what is the correct mechanical technique for the nurse technician?",
+    "options": [
+      "Turn the wheelchair around and walk forward down the ramp while pulling the chair.",
+      "Back the wheelchair down the ramp slowly, keeping the client's weight balanced and preventing them from tipping forward.",
+      "Let go of the wheelchair and let it coast down freely.",
+      "Run rapidly down the ramp holding the front riggings."
+    ],
+    "correct": 1,
+    "rational": "Backing down ramps keeps the heavy load near the technician's center of gravity and prevents the client from pitching forward out of the chair."
+  },
+  {
+    "id": 116,
+    "domain": "Basic Pharmacology & Administration",
+    "question": "A nurse technician is asked to bring a sublingual nitroglycerin tablet to a client reporting chest pain. What is the technician's role in medication administration?",
+    "options": [
+      "Administer the sublingual tablet independently without notifying anyone.",
+      "Crush the tablet into water and inject it into an IV line.",
+      "Swallow the tablet to test its safety.",
+      "Transport the medication or assist per policy, but notify the registered nurse immediately of the chest pain so licensed assessment and administration can occur."
+    ],
+    "correct": 3,
+    "rational": "Chest pain is a medical emergency; technicians must alert the licensed nurse immediately for professional clinical evaluation and medication delivery."
+  },
+  {
+    "id": 117,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "What is the defining clinical characteristic of a Stage 3 pressure injury?",
+    "options": [
+      "Full-thickness tissue loss where subcutaneous fat may be visible, but bone, tendon, and muscle are not exposed.",
+      "Intact skin with non-blanchable redness.",
+      "Partial-thickness loss of dermis presenting as a shallow open red-pink ulcer.",
+      "Full-thickness tissue loss with directly exposed bone and muscle."
+    ],
+    "correct": 0,
+    "rational": "Stage 3 pressure injuries feature full-thickness tissue loss extending down into subcutaneous fat, without direct exposure of bone, tendon, or muscle."
+  },
+  {
+    "id": 118,
+    "domain": "Personal Care & Hygiene",
+    "question": "What is the recommended duration and procedural standard for surgical hand scrubbing prior to assisting in sterile surgical environments?",
+    "options": [
+      "Washing hands with cold water for 5 seconds.",
+      "Scrubbing hands and forearms with antimicrobial soap and water for the facility's specified duration (typically 2 to 5 minutes), holding hands higher than elbows.",
+      "Wiping hands with dirty shop rags.",
+      "Applying hand lotion over unwashed hands."
+    ],
+    "correct": 2,
+    "rational": "Surgical hand scrubbing requires antimicrobial agents, friction, and specified duration (2-5 mins) while keeping hands elevated above elbows to prevent recontamination."
+  },
+  {
+    "id": 119,
+    "domain": "Communication & Client Rights",
+    "question": "A competent adult client refuses a scheduled morning blood pressure check, stating they want to sleep. How should the nurse technician respond?",
+    "options": [
+      "Wake the client aggressively and force the cuff onto their arm.",
+      "Respect the client's autonomy, document the refusal according to policy, and notify the registered nurse.",
+      "Record random blood pressure numbers in the chart anyway.",
+      "Threaten to cancel all hospital meals."
+    ],
+    "correct": 1,
+    "rational": "Adult clients have the legal right to refuse non-emergency assessments; technicians must respect autonomy, document accurately, and inform the RN."
+  },
+  {
+    "id": 120,
+    "domain": "Emergency Response & First Aid",
+    "question": "When storing compressed oxygen cylinders in a clinical unit, what safety precaution is mandatory?",
+    "options": [
+      "Store oxygen tanks lying horizontally rolling around on the floor.",
+      "Keep oxygen cylinders near open flames and heating radiators.",
+      "Wrap oxygen tanks in heavy wool blankets.",
+      "Secure oxygen cylinders upright in wall racks or approved wheeled carts to prevent tipping and falling."
+    ],
+    "correct": 3,
+    "rational": "Compressed oxygen cylinders are heavy and pressurized; they must be secured upright in racks or carts to prevent falling, valve breakage, and explosion hazards."
+  },
+{
+    "id": 121,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician is preparing to take an adult client's oral temperature using an electronic digital thermometer. Which anatomical location within the oral cavity ensures the most accurate core temperature reading?",
+    "options": [
+      "Placing the probe flat on top of the tongue's center surface",
+      "Placing the probe deep into either the right or left posterior sublingual pocket",
+      "Placing the probe directly against the front teeth",
+      "Placing the probe between the upper lip and gum line"
+    ],
+    "correct": 1,
+    "rational": "The posterior sublingual pockets are richly supplied with blood vessels that accurately reflect core body temperature when in close contact with the thermometer probe."
+  },
+  {
+    "id": 122,
+    "domain": "Infection Control & Safety",
+    "question": "When removing personal protective equipment (PPE) after caring for a client on isolation precautions, which item should be removed first to minimize potential self-contamination?",
+    "options": [
+      "The respiratory mask or surgical mask",
+      "The eye goggles or face shield",
+      "The gloves, being the most contaminated item, pulling them off inside-out without touching outer surfaces",
+      "The isolation gown"
+    ],
+    "correct": 2,
+    "rational": "Gloves carry the highest microbial load from direct contact and are systematically removed first before handling gowns, goggles, or masks."
+  },
+  {
+    "id": 123,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When assisting a client with right-sided hemiparesis to transfer from a bed to a wheelchair, how should the wheelchair be positioned to ensure optimal safety?",
+    "options": [
+      "Directly at the foot of the bed facing away from the furniture",
+      "Parallel against the left wall of the room",
+      "On the client's stronger (left) side, angled slightly toward the head of the bed",
+      "On the client's weaker (right) side to support the paralyzed arm"
+    ],
+    "correct": 2,
+    "rational": "Placing the wheelchair on the client's unaffected (stronger) side allows them to lead the transfer using their stronger limbs for balance and control."
+  },
+  {
+    "id": 124,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is assisting a client with opening a unit-dose medication package at the bedside. What vital safety step must be performed immediately before the client swallows the pill?",
+    "options": [
+      "Verify the client's identity using two unique identifiers (full name and date of birth) checked against their identification wristband",
+      "Verify the hospital room's telephone number and Wi-Fi password",
+      "Verify the color and shape of the pill against internet search images",
+      "Verify the current weather forecast outside the hospital window"
+    ],
+    "correct": 0,
+    "rational": "Checking two unique client identifiers against the ID wristband is a mandatory National Patient Safety Goal to prevent wrong-patient medication errors."
+  },
+  {
+    "id": 125,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "A nurse technician is monitoring a client's risk for pressure injuries using the Braden Scale. Which subscales are evaluated during this assessment?",
+    "options": [
+      "Blood pressure, body temperature, height, and weight",
+      "Sensory perception, moisture, activity, mobility, nutrition, and friction/shear",
+      "Heart rate, respiratory rate, pain scale, and oxygen saturation",
+      "Level of education, insurance coverage, and marital status"
+    ],
+    "correct": 1,
+    "rational": "The Braden Scale assesses six clinical risk factors: sensory perception, moisture exposure, physical activity, mobility, nutrition, and friction/shear."
+  },
+  {
+    "id": 126,
+    "domain": "Communication & Client Rights",
+    "question": "A client expresses fear and anxiety regarding an upcoming surgical procedure and asks the nurse technician if the surgery is dangerous. What is the appropriate professional response?",
+    "options": [
+      "Tell the client not to worry because surgeries are never dangerous",
+      "Acknowledge the client's concerns and notify the registered nurse or surgeon so they can provide a detailed clinical explanation and address risks",
+      "Describe surgical complication statistics and mortality rates yourself",
+      "Tell the client to cancel the operation immediately"
+    ],
+    "correct": 1,
+    "rational": "Technicians should validate emotional concerns and connect clients with licensed nurses or physicians who are legally authorized to discuss surgical risks."
+  },
+  {
+    "id": 127,
+    "domain": "Emergency Response & First Aid",
+    "question": "A nurse technician discovers a small chemical spill on the utility room floor. What document provides immediate safety data, handling procedures, and emergency response steps for the chemical?",
+    "options": [
+      "The hospital cafeteria lunch menu",
+      "The client's daily progress notes",
+      "The Safety Data Sheet (SDS) associated with the specific chemical product",
+      "The facility telephone directory"
+    ],
+    "correct": 2,
+    "rational": "Safety Data Sheets (SDS) contain vital hazard classifications, exposure limits, handling precautions, and emergency first-aid protocols for hazardous materials."
+  },
+  {
+    "id": 128,
+    "domain": "Personal Care & Hygiene",
+    "question": "When assisting a male client with perineal hygiene, what is the correct cleansing technique to minimize bacterial contamination?",
+    "options": [
+      "Cleansing starting at the urinary meatus and moving outward in circular motions using clean areas of the washcloth",
+      "Wiping from the rectal area forward toward the scrotum",
+      "Scrubbing the perineum back and forth vigorously with steel wool",
+      "Rinsing the area with freezing cold tap water"
+    ],
+    "correct": 0,
+    "rational": "Perineal care for a male starts at the urethral meatus and moves outward in circular motions, utilizing clean sections of the cloth to prevent urethral contamination."
+  },
+  {
+    "id": 129,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "When collecting a stool specimen for occult blood testing using a guaiac card, why is avoiding red meat and certain raw vegetables for 3 days prior recommended?",
+    "options": [
+      "To prevent the client from gaining weight",
+      "To prevent false-positive test results caused by dietary peroxidases reacting with the reagent",
+      "To prevent severe allergic anaphylaxis",
+      "To make the stool specimen change to a bright blue color naturally"
+    ],
+    "correct": 1,
+    "rational": "Dietary peroxidases present in red meat and raw fruits/vegetables can cause false-positive guaiac test reactions mimicking gastrointestinal bleeding."
+  },
+  {
+    "id": 130,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client is prescribed a low-sodium diet for chronic hypertension. Which food item should the nurse technician advise the client to avoid?",
+    "options": [
+      "Fresh steamed zucchini without added salt",
+      "Baked skinless chicken breast seasoned with fresh rosemary",
+      "Processed canned soups and cured deli meats",
+      "Fresh apples and bananas"
+    ],
+    "correct": 2,
+    "rational": "Processed canned soups and cured deli meats contain very high levels of hidden sodium and are strictly restricted on low-sodium diets."
+  },
+  {
+    "id": 131,
+    "domain": "Patient Safety & Fall Prevention",
+    "question": "Which environmental hazard should the nurse technician check and eliminate in a client's hospital room to reduce fall risks?",
+    "options": [
+      "Cluttered pathways, spilled liquids on the floor, trailing electrical cords, and unlocked bed wheels",
+      "Wall-mounted hand sanitizer dispensers",
+      "Clean hospital bed linens neatly tucked in",
+      "Properly lit overhead room lights"
+    ],
+    "correct": 0,
+    "rational": "Fall prevention rounds involve identifying and clearing environmental hazards such as spills, clutter, cords, and mobile furniture with unlocked wheels."
+  },
+  {
+    "id": 132,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "An adult client's resting heart rate is measured at 52 beats per minute. How should this heart rate be classified?",
+    "options": [
+      "Tachycardia",
+      "Bradycardia",
+      "Normocardia",
+      "Asystole"
+    ],
+    "correct": 1,
+    "rational": "Bradycardia is defined as a resting heart rate below 60 beats per minute in an adult client (unless conditioned by athletic training)."
+  },
+  {
+    "id": 133,
+    "domain": "Infection Control & Safety",
+    "question": "What is the primary purpose of institutional infection surveillance programs?",
+    "options": [
+      "To penalize individual nursing departments",
+      "To track nosocomial infection rates, identify outbreak clusters, and evaluate the effectiveness of hand hygiene and sterilization protocols",
+      "To eliminate all microorganisms from every surface in the hospital instantly",
+      "To reduce building utility and electricity expenses"
+    ],
+    "correct": 1,
+    "rational": "Surveillance programs monitor healthcare-associated infection trends to ensure continuous quality improvement and patient safety."
+  },
+  {
+    "id": 134,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When transferring a client from a bed to a wheelchair using a pivot technique, where should the nurse technician position their feet to maintain stability?",
+    "options": [
+      "Close together directly underneath the technician's center of gravity",
+      "With a wide base of support, placing feet apart with one foot staggered forward in the direction of transfer",
+      "Kneeling directly on the floor beside the mattress",
+      "Crossed tightly behind the client's knees"
+    ],
+    "correct": 1,
+    "rational": "A wide base of support with staggered feet improves balance, leverage, and body mechanics during client pivot transfers."
+  },
+  {
+    "id": 135,
+    "domain": "Basic Pharmacology & Administration",
+    "question": "A nurse technician observes a client spitting out a prescribed oral pill instead of swallowing it. What is the appropriate initial action?",
+    "options": [
+      "Pick the pill up off the floor and push it into the client's mouth",
+      "Crush the pill into sweet juice without telling anyone",
+      "Acknowledge the refusal, document it according to policy, and notify the registered nurse immediately",
+      "Leave the pill on the bedside table for later"
+    ],
+    "correct": 2,
+    "rational": "Client medication refusals must be respected, documented accurately, and reported promptly to the licensed registered nurse for clinical follow-up."
+  },
+  {
+    "id": 136,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "What is the primary purpose of applying a barrier cream or moisture barrier ointment to an incontinent client's skin?",
+    "options": [
+      "To seal out moisture, urine, and stool, protecting the epidermis from maceration and chemical irritation",
+      "To heat the skin and increase local perspiration",
+      "To cure bacterial wound infections directly",
+      "To accelerate hair growth over pressure points"
+    ],
+    "correct": 0,
+    "rational": "Moisture barrier ointments create a protective hydrophobic film over fragile skin, preventing urine and stool from causing maceration and breakdown."
+  },
+  {
+    "id": 137,
+    "domain": "Communication & Client Rights",
+    "question": "A nurse technician discusses confidential client care details in the public hospital cafeteria where visitors and other staff can overhear. What legal and ethical standard is violated?",
+    "options": [
+      "Informed consent protocols",
+      "Patient privacy and confidentiality standards (HIPAA/GDPR)",
+      "Facility billing transparency guidelines",
+      "Advanced directive execution rules"
+    ],
+    "correct": 1,
+    "rational": "Discussing clinical information in public spaces violates client privacy laws and professional confidentiality codes."
+  },
+  {
+    "id": 138,
+    "domain": "Emergency Response & First Aid",
+    "question": "What is the correct compression-to-ventilation ratio for standard adult cardiopulmonary resuscitation (CPR) performed by a single rescuer?",
+    "options": [
+      "15 chest compressions to 2 rescue breaths",
+      "30 chest compressions to 2 rescue breaths",
+      "5 chest compressions to 1 rescue breath",
+      "100 continuous chest compressions without breaths"
+    ],
+    "correct": 1,
+    "rational": "Standard adult CPR delivered by single or multiple rescuers follows an established ratio of 30 chest compressions to 2 rescue breaths."
+  },
+  {
+    "id": 139,
+    "domain": "Personal Care & Hygiene",
+    "question": "When assisting a client with bed bath hygiene, in what order should the technician wash the body parts?",
+    "options": [
+      "From clean areas to dirty areas (face and eyes first, arms, chest, abdomen, legs, and perineal area last)",
+      "Starting with the anal-genital region and finishing with the face",
+      "From the feet upward toward the face",
+      "Washing the back and buttocks first before touching the arms"
+    ],
+    "correct": 0,
+    "rational": "Bathing follows a clean-to-dirty progression to prevent spreading fecal microorganisms from the perineum to clean skin, eyes, and face."
+  },
+  {
+    "id": 140,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client on a renal diet due to chronic kidney disease has restrictions on certain electrolytes. Which electrolyte is commonly restricted to prevent dangerous cardiac arrhythmias?",
+    "options": [
+      "Sodium chloride exclusively",
+      "Potassium (found in bananas, oranges, potatoes, and tomatoes)",
+      "Calcium carbonate supplements",
+      "Magnesium oxide tablets"
+    ],
+    "correct": 1,
+    "rational": "Failing kidneys cannot excrete potassium efficiently, leading to hyperkalemia which triggers fatal cardiac arrhythmias; potassium-rich foods are restricted."
+  },
+{
+    "id": 141,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician is assessing an adult client's blood pressure manually. After inflating the cuff 30 mmHg above the estimated systolic pressure, at what speed should the technician open the valve to release air?",
+    "options": [
+      "10 to 15 mmHg per second to finish quickly",
+      "2 to 3 mmHg per second to accurately identify Korotkoff sounds",
+      "1 mmHg every 10 seconds for detailed recording",
+      "Release all air instantly in one second"
+    ],
+    "correct": 1,
+    "rational": "Deflating the cuff at a rate of 2 to 3 mmHg per second permits precise identification of the onset (systolic) and disappearance (diastolic) of Korotkoff sounds."
+  },
+  {
+    "id": 142,
+    "domain": "Infection Control & Safety",
+    "question": "When entering an Airborne Isolation room for a client with confirmed pulmonary tuberculosis, which respirator specification must the nurse technician verify?",
+    "options": [
+      "Standard paper dust mask with single elastic strap",
+      "Fit-tested NIOSH-approved N95 or higher particulate respirator mask",
+      "Cloth surgical mask with eye shield",
+      "Surgical mask with anti-fog foam"
+    ],
+    "correct": 1,
+    "rational": "Airborne precautions for tuberculosis require a fit-tested N95 or higher respirator mask that filters 95% of airborne particles down to 0.3 microns."
+  },
+  {
+    "id": 143,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "A nurse technician is preparing to move a dependent client up in bed using a ergonomic lift sheet. What posture should the technician assume to prevent back injury?",
+    "options": [
+      "Keep feet together, knees locked, and bend forward at the waist",
+      "Stand with feet shoulder-width apart, knees flexed, and pivot using leg muscles rather than twisting the back",
+      "Twist the spine forcefully while lifting with extended arms",
+      "Stand far away from the bed frame and pull with shoulders"
+    ],
+    "correct": 1,
+    "rational": "Proper body mechanics require a broad base of support, flexed knees, keeping the load close to the body, and utilizing leg muscles to prevent lumbar spine strain."
+  },
+  {
+    "id": 144,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client with a newly placed ileostomy asks why their stool output is continuously liquid compared to a colostomy. What physiological explanation should guide the technician's understanding?",
+    "options": [
+      "The ileostomy bypasses the large intestine (colon), where primary water absorption normally occurs",
+      "The client is drinking excessive amounts of tap water",
+      "The small intestine produces solid waste exclusively",
+      "The stoma is infected with bacterial toxins"
+    ],
+    "correct": 0,
+    "rational": "An ileostomy opens from the ileum (small intestine) before waste reaches the colon, where most water absorption takes place, resulting in continuous liquid drainage."
+  },
+  {
+    "id": 145,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is assisting with collecting a fingerstick capillary blood glucose sample. What action prevents tissue trauma and provides adequate blood volume?",
+    "options": [
+      "Puncturing the center flesh of the index finger pulp directly",
+      "Puncturing the side (lateral border) of the finger pad after warming the hand",
+      "Squeezing the finger violently until it turns purple",
+      "Puncturing the bed of the thumbnail"
+    ],
+    "correct": 1,
+    "rational": "Puncturing the lateral side of the fingertip avoids dense nerve endings in the center pulp, reducing pain while tapping rich capillary beds."
+  },
+  {
+    "id": 146,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "Which early clinical sign observed over a bony prominence indicates impaired tissue perfusion before full skin breakdown occurs?",
+    "options": [
+      "Non-blanchable erythema (redness that does not blanch when pressed)",
+      "Deep purple ulceration with exposed tendon",
+      "Thick yellow eschar with purulent fluid",
+      "Blistering filled with serosanguinous fluid"
+    ],
+    "correct": 0,
+    "rational": "Non-blanchable erythema of intact skin is the characteristic early indicator of localized microvascular ischemia and Stage 1 pressure injury."
+  },
+  {
+    "id": 147,
+    "domain": "Communication & Client Rights",
+    "question": "A client diagnosed with terminal cancer requests that their medical prognosis not be shared with family members. How should the technician support this legal right?",
+    "options": [
+      "Inform the family immediately during their next visit",
+      "Respect the client's explicit directive and notify the registered nurse to ensure privacy preferences are documented",
+      "Post the information on the nursing station whiteboards",
+      "Argue with the client about family values"
+    ],
+    "correct": 1,
+    "rational": "Competent adult clients retain legal authority over who receives their protected health information, which staff must honor under privacy regulations."
+  },
+  {
+    "id": 148,
+    "domain": "Emergency Response & First Aid",
+    "question": "A nurse technician enters a client room and observes active arterial bleeding from a dialysis graft site on the forearm. What is the immediate first step?",
+    "options": [
+      "Apply direct, firm pressure directly over the bleeding site with a clean gloved hand and absorbent dressing while calling for urgent help",
+      "Apply a tourniquet around the client's neck",
+      "Elevate the arm below heart level and wait 10 minutes",
+      "Wash the graft site with cold tap water"
+    ],
+    "correct": 0,
+    "rational": "Direct firm pressure over an active vascular hemorrhage is the single most effective initial intervention to minimize blood loss while summoning immediate assistance."
+  },
+  {
+    "id": 149,
+    "domain": "Personal Care & Hygiene",
+    "question": "When providing eye care for an unconscious client who lacks a blink reflex, what protective measure prevents corneal drying and ulceration?",
+    "options": [
+      "Instilling prescribed artificial tears or lubricating ointment and ensuring eyelids are closed or covered as directed",
+      "Leaving the eyes propped open continuously to monitor pupils",
+      "Wiping the eyes with dry paper towels every 12 hours",
+      "Shining a bright flashlight into the eyes continuously"
+    ],
+    "correct": 0,
+    "rational": "Unconscious clients lose corneal blink reflexes; applying prescribed eye lubricants and maintaining closed eyelids prevents corneal abrasion and keratitis."
+  },
+  {
+    "id": 150,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "A nurse technician is obtaining a midstream clean-catch urine specimen from a male client. What instruction ensures proper decontamination of the urethral meatus?",
+    "options": [
+      "Cleanse the tip of the penis from the urethral meatus outward in circular motions using antiseptic wipes prior to voiding",
+      "Wipe from the scrotum upward toward the navel once",
+      "Wash the inner cup with tap water before collection",
+      "Collect the first 5 mL of voided urine directly into the cup without stopping"
+    ],
+    "correct": 0,
+    "rational": "Cleansing from the meatus outward in circular motions removes normal cutaneous flora, ensuring the midstream urine sample is free of external contaminants."
+  },
+  {
+    "id": 151,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "An adult client's radial pulse rate is 112 beats per minute at rest. How should the technician document this rate?",
+    "options": [
+      "Bradycardia",
+      "Tachycardia",
+      "Eupnea",
+      "Normotension"
+    ],
+    "correct": 1,
+    "rational": "Tachycardia is defined as an elevated resting adult heart rate exceeding 100 beats per minute."
+  },
+  {
+    "id": 152,
+    "domain": "Infection Control & Safety",
+    "question": "What is the primary rationale for avoiding friction or vigorous rubbing when applying alcohol-based hand rub gel?",
+    "options": [
+      "Rubbing hands vigorously until dry is actually required to distribute gel and achieve full antimicrobial action",
+      "Gel causes skin chemical burns if rubbed",
+      "Alcohol rub turns into water when friction is applied",
+      "Rubbing reduces the temperature of the gel"
+    ],
+    "correct": 0,
+    "rational": "Alcohol-based rubs require full coverage and friction across all hand surfaces until completely dry to eliminate transient pathogens."
+  },
+  {
+    "id": 153,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When assisting a client with left-sided hemiplegia from a wheelchair into bed, where should the technician position themselves?",
+    "options": [
+      "Slightly behind the client on their weaker (left) side to support the affected limbs during transfer",
+      "Directly behind the wheelchair holding the handles",
+      "On the stronger side facing away",
+      "Across the room holding a transfer belt"
+    ],
+    "correct": 0,
+    "rational": "Positioning on the client's affected (weaker) side allows the technician to stabilize impaired joints and assist weight bearing safely during transfers."
+  },
+  {
+    "id": 154,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client on strict intake and output (I&O) monitoring consumes 8 ounces of broth, 4 ounces of gelatin, and 4 ounces of ice cream. What is the total liquid intake volume recorded in milliliters (mL)?",
+    "options": [
+      "320 mL",
+      "480 mL",
+      "240 mL",
+      "600 mL"
+    ],
+    "correct": 1,
+    "rational": "Calculation: $8 \\text{ oz (broth)} + 4 \\text{ oz (gelatin)} + 4 \\text{ oz (ice cream)} = 16 \\text{ oz} \\times 30 \\text{ mL/oz} = 480 \\text{ mL}$."
+  },
+  {
+    "id": 155,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is transporting a scheduled oral medication from the medication room to the client's bedside. What action violates safety guidelines?",
+    "options": [
+      "Carrying the medication in an unlabeled cup left unattended on a hallway tray",
+      "Verifying client identity with two unique identifiers",
+      "Keeping the medication package sealed until bedside verification",
+      "Checking the MAR against the client's ID wristband"
+    ],
+    "correct": 0,
+    "rational": "Leaving unlabeled medications unattended in public areas violates safety protocols and risks wrong-patient errors or medication loss."
+  },
+  {
+    "id": 156,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "When assessing a client's risk for pressure ulcer formation, what effect does severe urinary and fecal incontinence have on skin breakdown?",
+    "options": [
+      "Fecal enzymes and moisture macerate the epidermis, significantly weakening skin resistance to friction and pressure",
+      "Incontinence thickens the dermis and prevents breakdown",
+      "Incontinence eliminates the risk of bacterial skin infections",
+      "Moisture acts as a natural protective barrier against shear"
+    ],
+    "correct": 0,
+    "rational": "Combined urinary and fecal exposure subjects skin to moisture and digestive enzymes, causing maceration, chemical inflammation, and rapid tissue degradation."
+  },
+  {
+    "id": 157,
+    "domain": "Communication & Client Rights",
+    "question": "A client who speaks only Arabic is preparing to sign an informed consent form for a procedure. How should the healthcare team facilitate consent?",
+    "options": [
+      "Use an accredited medical interpreter to translate discussions accurately rather than relying on uncertified family members",
+      "Have a family child translate complex medical terminology",
+      "Nod and ask the client to sign the English form without explanation",
+      "Use body gestures exclusively to explain risks"
+    ],
+    "correct": 0,
+    "rational": "Certified medical interpreters ensure precise translation of clinical risks and informed consent, avoiding miscommunication inherent in using family members."
+  },
+  {
+    "id": 158,
+    "domain": "Emergency Response & First Aid",
+    "question": "When performing chest compressions on an adult during CPR, what is the recommended compression depth and rate according to BLS guidelines?",
+    "options": [
+      "Depth of 1 inch at a rate of 60 compressions per minute",
+      "Depth of at least 2 inches (5 cm) but no more than 2.4 inches (6 cm) at a rate of 100 to 120 compressions per minute",
+      "Depth of 3 inches at a rate of 140 compressions per minute",
+      "Depth of 0.5 inches at a rate of 80 compressions per minute"
+    ],
+    "correct": 1,
+    "rational": "High-quality adult CPR requires compressing the chest at a depth of 2 to 2.4 inches at a frequency of 100 to 120 compressions per minute to optimize cardiac output."
+  },
+  {
+    "id": 159,
+    "domain": "Personal Care & Hygiene",
+    "question": "When performing oral hygiene on an unconscious client, what positioning minimizes the risk of aspiration?",
+    "options": [
+      "Supine position with head flat",
+      "Side-lying (lateral) position with the head turned toward the side and bed slightly elevated",
+      "Trendelenburg position",
+      "Prone position facing straight down"
+    ],
+    "correct": 1,
+    "rational": "Placing an unconscious client in a side-lying position allows fluids and saliva to drain out of the mouth naturally via gravity, preventing pulmonary aspiration."
+  },
+  {
+    "id": 160,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client with an indwelling urinary catheter complains of lower abdominal fullness and discomfort. The technician notices no urine drainage in the bag over the last 3 hours. What is the initial check?",
+    "options": [
+      "Check the tubing for kinks, twists, or dependent loops that obstruct flow",
+      "Force 500 mL of water down the catheter tube",
+      "Pull the catheter out forcefully",
+      "Replace the entire drainage bag with a new one immediately"
+    ],
+    "correct": 0,
+    "rational": "Mechanically checking for tubing obstruction (kinks or compression) is the immediate non-invasive troubleshooting step when catheter drainage stops."
+  },
+{
+    "id": 161,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "When taking an adult client's tympanic temperature using an electronic thermometer, how should the nurse technician position the external ear (pinna) to straighten the ear canal?",
+    "options": [
+      "Pull the pinna upward and backward",
+      "Pull the pinna straight downward and forward",
+      "Push the pinna flat against the temporal bone",
+      "Leave the ear unadjusted"
+    ],
+    "correct": 0,
+    "rational": "Pulling the adult pinna upward and backward straightens the external auditory canal, allowing the infrared sensor to align directly with the tympanic membrane."
+  },
+  {
+    "id": 162,
+    "domain": "Infection Control & Safety",
+    "question": "What is the recommended standard household bleach dilution ratio used to disinfect blood and bodily fluid spills on hard environmental surfaces?",
+    "options": [
+      "1 part bleach to 100 parts water (1:100)",
+      "1 part bleach to 10 parts water (1:10)",
+      "Pure undiluted bleach straight from the bottle",
+      "1 part bleach to 1,000 parts water"
+    ],
+    "correct": 1,
+    "rational": "A 1:10 sodium hypochlorite (bleach) solution is recommended for disinfecting blood and bodily fluid spills to ensure viral and bacterial inactivation."
+  },
+  {
+    "id": 163,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When fitting an adult client for crutches, what is the proper distance that should be maintained between the crutch pad and the client's axilla (armpit)?",
+    "options": [
+      "Crutch pads wedged tightly directly into the armpit",
+      "A distance of 12 inches below the armpit",
+      "A distance of approximately 2 to 3 fingers width (1 to 2 inches) between the pad and axilla",
+      "Crutch pads resting on the client's collarbone"
+    ],
+    "correct": 2,
+    "rational": "Maintaining a 2 to 3 finger-width gap prevents pressure on the axillary blood vessels and nerves, avoiding crutch palsy."
+  },
+  {
+    "id": 164,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is assisting a client with crushing oral medications for administration through an enteric tube. Which type of pill must never be crushed?",
+    "options": [
+      "Uncoated scored tablets",
+      "Plain chewable vitamins",
+      "Immediate-release simple tablets",
+      "Enteric-coated and sustained-release (SR/XR) tablets"
+    ],
+    "correct": 3,
+    "rational": "Crushing enteric-coated or sustained-release medications destroys their specialized delivery mechanism, risking rapid toxicity or gastric mucosal irritation."
+  },
+  {
+    "id": 165,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "Which clinical manifestation is characteristic of a localized wound infection in a surgical incision?",
+    "options": [
+      "Purulent drainage, increasing localized pain, swelling, warmth, and surrounding erythema",
+      "Pale, cool skin with absent sensation",
+      "Completely dry, painless, pale pink closure",
+      "Rapid spontaneous disappearance of the incision line"
+    ],
+    "correct": 0,
+    "rational": "Local wound infections present with classic signs of inflammation and bacterial proliferation: purulent exudate, heat, swelling, redness, and pain."
+  },
+  {
+    "id": 166,
+    "domain": "Communication & Client Rights",
+    "question": "During a client interaction, which statement by the healthcare worker represents a therapeutic communication technique?",
+    "options": [
+      "\"Don't worry, everything is going to be completely fine.\"",
+      "\"Tell me more about what you are feeling right now regarding your treatment.\"",
+      "\"Why did you wait so long to tell us about your pain?\"",
+      "\"You shouldn't feel upset about hospital rules.\""
+    ],
+    "correct": 1,
+    "rational": "Open-ended exploration encourages clients to express their feelings and concerns freely, whereas false reassurance and 'why' questions hinder communication."
+  },
+  {
+    "id": 167,
+    "domain": "Emergency Response & First Aid",
+    "question": "What is the correct emergency maneuver for clearing a severe airway obstruction in a conscious infant under 1 year of age?",
+    "options": [
+      "Applying adult abdominal thrusts (Heimlich maneuver)",
+      "Performing deep finger sweeps blindly into the mouth",
+      "Delivering alternating series of 5 back slaps and 5 chest thrusts with the infant's head positioned lower than the chest",
+      "Placing the infant flat on their back and shaking gently"
+    ],
+    "correct": 2,
+    "rational": "Conscious choking infants receive alternating back slaps and chest thrusts in a head-down position, avoiding blind finger sweeps which can push objects deeper."
+  },
+  {
+    "id": 168,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "When initiating a 24-hour urine collection specimen, what is the correct protocol regarding the very first voiding at the start of the test?",
+    "options": [
+      "Save the first void in the container as the very first sample",
+      "Mix the first void with drinking water",
+      "Freeze the first void immediately",
+      "Instruct the client to empty their bladder completely, discard that initial urine, and start the 24-hour timer with an empty bladder"
+    ],
+    "correct": 3,
+    "rational": "A 24-hour urine collection begins with an empty bladder; discarding the first void ensures old urine from before the test window is excluded."
+  },
+  {
+    "id": 169,
+    "domain": "Nutrition & Elimination Care",
+    "question": "Which food or fluid selection is appropriate for an adult client prescribed a strict clear liquid diet?",
+    "options": [
+      "Apple juice, clear fat-free beef broth, and flavored gelatin",
+      "Whole milk and creamy potato soup",
+      "Scrambled eggs and buttered toast",
+      "Vanilla ice cream and yogurt"
+    ],
+    "correct": 0,
+    "rational": "Clear liquid diets consist of transparent fluids and translucent foods at room temperature (broth, clear juices, gelatin, tea) that leave minimal residue."
+  },
+  {
+    "id": 170,
+    "domain": "Personal Care & Hygiene",
+    "question": "When performing a soothing back massage (effleurage) for an immobile client, what motion should the nurse technician utilize?",
+    "options": [
+      "Vigorous slapping and punching motions over the spine",
+      "Long, smooth, gliding strokes (effleurage) applied in circular motions along the back muscles without direct heavy pressure over bony vertebrae",
+      "Scraping the skin with rough fingernails",
+      "Applying boiling hot towels directly to the skin"
+    ],
+    "correct": 1,
+    "rational": "Effleurage uses smooth, continuous gliding strokes to promote relaxation and local blood circulation without injuring fragile spinal vertebrae."
+  },
+  {
+    "id": 171,
+    "domain": "Patient Safety & Fall Prevention",
+    "question": "What is a mandatory safety check when leaving a hospital room after assisting an adult client who is classified as a high fall risk?",
+    "options": [
+      "Turn off all room lights and close the door tightly",
+      "Raise all four bed rails and lock them permanently",
+      "Ensure the hospital bed is in its lowest position with wheels locked, and place the call bell within immediate reach",
+      "Remove the call bell cord so the client rests undisturbed"
+    ],
+    "correct": 2,
+    "rational": "Fall prevention requires keeping beds low with locked brakes and ensuring the call bell is accessible for prompt assistance."
+  },
+  {
+    "id": 172,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "What is the normal resting respiratory rate range for a healthy adult client?",
+    "options": [
+      "6 to 10 breaths per minute",
+      "25 to 35 breaths per minute",
+      "40 to 60 breaths per minute",
+      "12 to 20 breaths per minute"
+    ],
+    "correct": 3,
+    "rational": "A normal resting adult respiratory rate typically ranges between 12 and 20 breaths per minute of quiet, regular breathing."
+  },
+  {
+    "id": 173,
+    "domain": "Infection Control & Safety",
+    "question": "When opening a sterile supply package for a dressing change, which direction should the technician open the outermost flap first?",
+    "options": [
+      "Away from the technician's body to prevent reaching across the sterile surface",
+      "Directly toward the technician's chest",
+      "To the left side only",
+      "In any random direction without preference"
+    ],
+    "correct": 0,
+    "rational": "Opening the outermost flap away from the body first prevents unsterile arms and hands from crossing over the sterile contents."
+  },
+  {
+    "id": 174,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When checking the height adjustment of a single-point walking cane for an adult client, where should the top handle of the cane align anatomically?",
+    "options": [
+      "Level with the client's shoulder joint",
+      "Level with the client's wrist crease (or greater trochanter of the hip) with the elbow flexed at 15 to 30 degrees",
+      "Level with the client's knee joint",
+      "Level with the client's chin"
+    ],
+    "correct": 1,
+    "rational": "Canes are fitted so the handle aligns with the client's wrist crease, allowing a comfortable 15 to 30 degree elbow flexion during support."
+  },
+  {
+    "id": 175,
+    "domain": "Basic Pharmacology & Administration",
+    "question": "A nurse technician is assisting a licensed nurse with administering a rectal suppository to an adult client. What procedural guideline should be followed?",
+    "options": [
+      "Insert the suppository forcefully into solid stool",
+      "Instruct the client to stand upright immediately after insertion",
+      "Lubricate the suppository tip with water-soluble lubricant and insert it past the anal sphincter along the rectal wall",
+      "Push the suppository deep into the urinary bladder"
+    ],
+    "correct": 2,
+    "rational": "Suppositories must be lubricated with water-soluble jelly and inserted past the internal anal sphincter against the rectal wall to ensure proper retention and melting."
+  },
+  {
+    "id": 176,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "What is the primary therapeutic purpose of applying a hydrogel wound dressing to a shallow wound with dry necrotic tissue?",
+    "options": [
+      "To absorb massive amounts of thick bloody drainage",
+      "To bake and freeze the wound simultaneously",
+      "To provide waterproof adhesive protection for 30 days",
+      "To donate moisture to the wound bed and promote autolytic debridement of dry necrotic tissue"
+    ],
+    "correct": 3,
+    "rational": "Hydrogel dressings hydrate dry wound beds, softening hard eschar and facilitating autolytic debridement by the body's natural enzymes."
+  },
+  {
+    "id": 177,
+    "domain": "Communication & Client Rights",
+    "question": "A nurse technician finishes reviewing a client's electronic health record on a workstation computer. What mandatory security action must be taken before walking away?",
+    "options": [
+      "Log off or lock the computer terminal workstation immediately",
+      "Leave the monitor screen open for public viewing",
+      "Turn off the hospital's main electrical power breaker",
+      "Write the client's password on a sticky note attached to the screen"
+    ],
+    "correct": 0,
+    "rational": "Leaving workstation screens logged in violates client privacy and institutional security policies; terminals must always be locked when unattended."
+  },
+  {
+    "id": 178,
+    "domain": "Emergency Response & First Aid",
+    "question": "A client is experiencing a severe extremity hemorrhage. Direct pressure has failed to stop the bleeding. Where and how should a manufactured tourniquet be applied?",
+    "options": [
+      "Directly over a joint (elbow or knee)",
+      "2 to 3 inches proximal to the bleeding wound on the limb, never directly over a joint, tightened until bleeding stops",
+      "Tied tightly around the client's neck",
+      "Loosely around the toes"
+    ],
+    "correct": 1,
+    "rational": "Tourniquets are placed on limbs 2 to 3 inches above the bleeding site (not over joints) and tightened securely to occlude arterial blood flow."
+  },
+  {
+    "id": 179,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "When collecting blood culture specimens from an adult client to investigate suspected sepsis, why are specimens typically drawn from two separate venipuncture sites?",
+    "options": [
+      "To make the laboratory work longer",
+      "To practice venipuncture techniques twice on different arms",
+      "To differentiate true bloodstream pathogens from skin contaminants and ensure accurate diagnostic yield",
+      "To fill up extra test tube quotas"
+    ],
+    "correct": 2,
+    "rational": "Drawing blood cultures from two distinct venipuncture sites helps verify true bacteremia versus transient skin-borne bacterial contamination."
+  },
+  {
+    "id": 180,
+    "domain": "Nutrition & Elimination Care",
+    "question": "What is the standard procedure for maintaining patency of a continuous enteral feeding tube before and after medication administration?",
+    "options": [
+      "Clamp the tube permanently for 24 hours",
+      "Flush the tube with warm carbonated soda only",
+      "Inject pressurized air into the tubing",
+      "Flush the feeding tube with specified volumes of warm water before and after medication instillation to prevent clogging"
+    ],
+    "correct": 3,
+    "rational": "Flushing feeding tubes with water before and after medication administration prevents drug residue buildup and tube occlusion."
+  },
+{
+    "id": 181,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "A nurse technician is assessing an adult client's blood pressure manually. After inflating the cuff 30 mmHg above the estimated systolic pressure, at what speed should the technician open the valve to release air?",
+    "options": [
+      "10 to 15 mmHg per second to finish quickly",
+      "2 to 3 mmHg per second to accurately identify Korotkoff sounds",
+      "1 mmHg every 10 seconds for detailed recording",
+      "Release all air instantly in one second"
+    ],
+    "correct": 1,
+    "rational": "Deflating the cuff at a rate of 2 to 3 mmHg per second permits precise identification of the onset (systolic) and disappearance (diastolic) of Korotkoff sounds."
+  },
+  {
+    "id": 182,
+    "domain": "Infection Control & Safety",
+    "question": "When entering an Airborne Isolation room for a client with confirmed pulmonary tuberculosis, which respirator specification must the nurse technician verify?",
+    "options": [
+      "Standard paper dust mask with single elastic strap",
+      "Fit-tested NIOSH-approved N95 or higher particulate respirator mask",
+      "Cloth surgical mask with eye shield",
+      "Surgical mask with anti-fog foam"
+    ],
+    "correct": 1,
+    "rational": "Airborne precautions for tuberculosis require a fit-tested N95 or higher respirator mask that filters 95% of airborne particles down to 0.3 microns."
+  },
+  {
+    "id": 183,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "A nurse technician is preparing to move a dependent client up in bed using an ergonomic lift sheet. What posture should the technician assume to prevent back injury?",
+    "options": [
+      "Keep feet together, knees locked, and bend forward at the waist",
+      "Stand with feet shoulder-width apart, knees flexed, and pivot using leg muscles rather than twisting the back",
+      "Twist the spine forcefully while lifting with extended arms",
+      "Stand far away from the bed frame and pull with shoulders"
+    ],
+    "correct": 1,
+    "rational": "Proper body mechanics require a broad base of support, flexed knees, keeping the load close to the body, and utilizing leg muscles to prevent lumbar spine strain."
+  },
+  {
+    "id": 184,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client with a newly placed ileostomy asks why their stool output is continuously liquid compared to a colostomy. What physiological explanation should guide the technician's understanding?",
+    "options": [
+      "The ileostomy bypasses the large intestine (colon), where primary water absorption normally occurs",
+      "The client is drinking excessive amounts of tap water",
+      "The small intestine produces solid waste exclusively",
+      "The stoma is infected with bacterial toxins"
+    ],
+    "correct": 0,
+    "rational": "An ileostomy opens from the ileum (small intestine) before waste reaches the colon, where most water absorption takes place, resulting in continuous liquid drainage."
+  },
+  {
+    "id": 185,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is assisting with collecting a fingerstick capillary blood glucose sample. What action prevents tissue trauma and provides adequate blood volume?",
+    "options": [
+      "Puncturing the center flesh of the index finger pulp directly",
+      "Puncturing the side (lateral border) of the finger pad after warming the hand",
+      "Squeezing the finger violently until it turns purple",
+      "Puncturing the bed of the thumbnail"
+    ],
+    "correct": 1,
+    "rational": "Puncturing the lateral side of the fingertip avoids dense nerve endings in the center pulp, reducing pain while tapping rich capillary beds."
+  },
+  {
+    "id": 186,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "Which early clinical sign observed over a bony prominence indicates impaired tissue perfusion before full skin breakdown occurs?",
+    "options": [
+      "Non-blanchable erythema (redness that does not blanch when pressed)",
+      "Deep purple ulceration with exposed tendon",
+      "Thick yellow eschar with purulent fluid",
+      "Blistering filled with serosanguinous fluid"
+    ],
+    "correct": 0,
+    "rational": "Non-blanchable erythema of intact skin is the characteristic early indicator of localized microvascular ischemia and Stage 1 pressure injury."
+  },
+  {
+    "id": 187,
+    "domain": "Communication & Client Rights",
+    "question": "A client diagnosed with terminal cancer requests that their medical prognosis not be shared with family members. How should the technician support this legal right?",
+    "options": [
+      "Inform the family immediately during their next visit",
+      "Respect the client's explicit directive and notify the registered nurse to ensure privacy preferences are documented",
+      "Post the information on the nursing station whiteboards",
+      "Argue with the client about family values"
+    ],
+    "correct": 1,
+    "rational": "Competent adult clients retain legal authority over who receives their protected health information, which staff must honor under privacy regulations."
+  },
+  {
+    "id": 188,
+    "domain": "Emergency Response & First Aid",
+    "question": "A nurse technician enters a client room and observes active arterial bleeding from a dialysis graft site on the forearm. What is the immediate first step?",
+    "options": [
+      "Apply direct, firm pressure directly over the bleeding site with a clean gloved hand and absorbent dressing while calling for urgent help",
+      "Apply a tourniquet around the client's neck",
+      "Elevate the arm below heart level and wait 10 minutes",
+      "Wash the graft site with cold tap water"
+    ],
+    "correct": 0,
+    "rational": "Direct firm pressure over an active vascular hemorrhage is the single most effective initial intervention to minimize blood loss while summoning immediate assistance."
+  },
+  {
+    "id": 189,
+    "domain": "Personal Care & Hygiene",
+    "question": "When providing eye care for an unconscious client who lacks a blink reflex, what protective measure prevents corneal drying and ulceration?",
+    "options": [
+      "Instilling prescribed artificial tears or lubricating ointment and ensuring eyelids are closed or covered as directed",
+      "Leaving the eyes propped open continuously to monitor pupils",
+      "Wiping the eyes with dry paper towels every 12 hours",
+      "Shining a bright flashlight into the eyes continuously"
+    ],
+    "correct": 0,
+    "rational": "Unconscious clients lose corneal blink reflexes; applying prescribed eye lubricants and maintaining closed eyelids prevents corneal abrasion and keratitis."
+  },
+  {
+    "id": 190,
+    "domain": "Specimen Collection & Diagnostics",
+    "question": "A nurse technician is obtaining a midstream clean-catch urine specimen from a male client. What instruction ensures proper decontamination of the urethral meatus?",
+    "options": [
+      "Cleanse the tip of the penis from the urethral meatus outward in circular motions using antiseptic wipes prior to voiding",
+      "Wipe from the scrotum upward toward the navel once",
+      "Wash the inner cup with tap water before collection",
+      "Collect the first 5 mL of voided urine directly into the cup without stopping"
+    ],
+    "correct": 0,
+    "rational": "Cleansing from the meatus outward in circular motions removes normal cutaneous flora, ensuring the midstream urine sample is free of external contaminants."
+  },
+  {
+    "id": 191,
+    "domain": "Vital Signs & Hemodynamic Monitoring",
+    "question": "An adult client's radial pulse rate is 112 beats per minute at rest. How should the technician document this rate?",
+    "options": [
+      "Bradycardia",
+      "Tachycardia",
+      "Eupnea",
+      "Normotension"
+    ],
+    "correct": 1,
+    "rational": "Tachycardia is defined as an elevated resting adult heart rate exceeding 100 beats per minute."
+  },
+  {
+    "id": 192,
+    "domain": "Infection Control & Safety",
+    "question": "What is the primary rationale for friction during handwashing with soap and running water?",
+    "options": [
+      "Friction creates mechanical force that physically dislodges and removes transient microorganisms from skin surfaces",
+      "Friction warms the water temperature to kill bacteria thermally",
+      "Friction removes permanent skin layers",
+      "Friction replaces the need for soap"
+    ],
+    "correct": 0,
+    "rational": "Mechanical friction during hand hygiene physically breaks up dirt and transient pathogens so running water can flush them away."
+  },
+  {
+    "id": 193,
+    "domain": "Patient Mobility & Mechanics",
+    "question": "When assisting a client with left-sided hemiplegia from a wheelchair into bed, where should the technician position themselves?",
+    "options": [
+      "Slightly behind the client on their weaker (left) side to support the affected limbs during transfer",
+      "Directly behind the wheelchair holding the handles",
+      "On the stronger side facing away",
+      "Across the room holding a transfer belt"
+    ],
+    "correct": 0,
+    "rational": "Positioning on the client's affected (weaker) side allows the technician to stabilize impaired joints and assist weight bearing safely during transfers."
+  },
+  {
+    "id": 194,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client on strict intake and output (I&O) monitoring consumes 8 ounces of broth, 4 ounces of gelatin, and 4 ounces of ice cream. What is the total liquid intake volume recorded in milliliters (mL)?",
+    "options": [
+      "320 mL",
+      "480 mL",
+      "240 mL",
+      "600 mL"
+    ],
+    "correct": 1,
+    "rational": "Calculation: $8 \\text{ oz (broth)} + 4 \\text{ oz (gelatin)} + 4 \\text{ oz (ice cream)} = 16 \\text{ oz} \\times 30 \\text{ mL/oz} = 480 \\text{ mL}$."
+  },
+  {
+    "id": 195,
+    "domain": "Basic Pharmacology & Medication Safety",
+    "question": "A nurse technician is transporting a scheduled oral medication from the medication room to the client's bedside. What action violates safety guidelines?",
+    "options": [
+      "Carrying the medication in an unlabeled cup left unattended on a hallway tray",
+      "Verifying client identity with two unique identifiers",
+      "Keeping the medication package sealed until bedside verification",
+      "Checking the MAR against the client's ID wristband"
+    ],
+    "correct": 0,
+    "rational": "Leaving unlabeled medications unattended in public areas violates safety protocols and risks wrong-patient errors or medication loss."
+  },
+  {
+    "id": 196,
+    "domain": "Wound Care & Skin Integrity",
+    "question": "When assessing a client's risk for pressure ulcer formation, what effect does severe urinary and fecal incontinence have on skin breakdown?",
+    "options": [
+      "Fecal enzymes and moisture macerate the epidermis, significantly weakening skin resistance to friction and pressure",
+      "Incontinence thickens the dermis and prevents breakdown",
+      "Incontinence eliminates the risk of bacterial skin infections",
+      "Moisture acts as a natural protective barrier against shear"
+    ],
+    "correct": 0,
+    "rational": "Combined urinary and fecal exposure subjects skin to moisture and digestive enzymes, causing maceration, chemical inflammation, and rapid tissue degradation."
+  },
+  {
+    "id": 197,
+    "domain": "Communication & Client Rights",
+    "question": "A client who speaks only Arabic is preparing to sign an informed consent form for a procedure. How should the healthcare team facilitate consent?",
+    "options": [
+      "Use an accredited medical interpreter to translate discussions accurately rather than relying on uncertified family members",
+      "Have a family child translate complex medical terminology",
+      "Nod and ask the client to sign the English form without explanation",
+      "Use body gestures exclusively to explain risks"
+    ],
+    "correct": 0,
+    "rational": "Certified medical interpreters ensure precise translation of clinical risks and informed consent, avoiding miscommunication inherent in using family members."
+  },
+  {
+    "id": 198,
+    "domain": "Emergency Response & First Aid",
+    "question": "When performing chest compressions on an adult during CPR, what is the recommended compression depth and rate according to BLS guidelines?",
+    "options": [
+      "Depth of 1 inch at a rate of 60 compressions per minute",
+      "Depth of at least 2 inches (5 cm) but no more than 2.4 inches (6 cm) at a rate of 100 to 120 compressions per minute",
+      "Depth of 3 inches at a rate of 140 compressions per minute",
+      "Depth of 0.5 inches at a rate of 80 compressions per minute"
+    ],
+    "correct": 1,
+    "rational": "High-quality adult CPR requires compressing the chest at a depth of 2 to 2.4 inches at a frequency of 100 to 120 compressions per minute to optimize cardiac output."
+  },
+  {
+    "id": 199,
+    "domain": "Personal Care & Hygiene",
+    "question": "When performing oral hygiene on an unconscious client, what positioning minimizes the risk of aspiration?",
+    "options": [
+      "Supine position with head flat",
+      "Side-lying (lateral) position with the head turned toward the side and bed slightly elevated",
+      "Trendelenburg position",
+      "Prone position facing straight down"
+    ],
+    "correct": 1,
+    "rational": "Placing an unconscious client in a side-lying position allows fluids and saliva to drain out of the mouth naturally via gravity, preventing pulmonary aspiration."
+  },
+  {
+    "id": 200,
+    "domain": "Nutrition & Elimination Care",
+    "question": "A client with an indwelling urinary catheter complains of lower abdominal fullness and discomfort. The technician notices no urine drainage in the bag over the last 3 hours. What is the initial check?",
+    "options": [
+      "Check the tubing for kinks, twists, or dependent loops that obstruct flow",
+      "Force 500 mL of water down the catheter tube",
+      "Pull the catheter out forcefully",
+      "Replace the entire drainage bag with a new one immediately"
+    ],
+    "correct": 0,
+    "rational": "Mechanically checking for tubing obstruction (kinks or compression) is the immediate non-invasive troubleshooting step when catheter drainage stops."
+  }
+];
+
+        let activeItems = [];
+        let currentIndex = 0;
+        let userAnswers = {};
+        let flaggedQuestions = new Set();
+        let timerInterval = null;
+        let secondsElapsed = 0;
+        let isReviewMode = false;
+
+        function startExam() {
+            const inputVal = document.getElementById('json-input').value.trim();
+            let sourceBank = defaultItemBank;
+
+            if (inputVal) {
+                try {
+                    sourceBank = JSON.parse(inputVal);
+                } catch (e) {
+                    alert('Invalid JSON format provided. Please check your syntax or leave blank to use built-in items.');
+                    return;
+                }
+            }
+
+            const requestedCount = parseInt(document.getElementById('select-count').value);
+            activeItems = [...sourceBank].sort(() => 0.5 - Math.random()).slice(0, requestedCount);
+            if (activeItems.length === 0) activeItems = defaultItemBank;
+
+            currentIndex = 0;
+            userAnswers = {};
+            flaggedQuestions.clear();
+            secondsElapsed = 0;
+            isReviewMode = false;
+
+            document.getElementById('view-setup').classList.add('hidden');
+            document.getElementById('view-results').classList.add('hidden');
+            document.getElementById('view-quiz').classList.remove('hidden');
+            document.getElementById('header-stats').classList.remove('hidden');
+
+            startTimer();
+            renderQuestion();
+            renderPalette();
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                const hrs = String(Math.floor(secondsElapsed / 3600)).padStart(2, '0');
+                const mins = String(Math.floor((secondsElapsed % 3600) / 60)).padStart(2, '0');
+                const secs = String(secondsElapsed % 60).padStart(2, '0');
+                document.getElementById('timer-display').textContent = `${hrs}:${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function renderQuestion() {
+            const item = activeItems[currentIndex];
+            document.getElementById('question-domain').textContent = item.domain || 'Nurse Technician Core';
+            document.getElementById('question-number-label').textContent = `Question ${currentIndex + 1} of ${activeItems.length}`;
+            document.getElementById('question-id-badge').textContent = `ID: #${item.id || currentIndex + 1}`;
+            document.getElementById('question-text').textContent = item.question;
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            item.options.forEach((opt, idx) => {
+                const isSelected = userAnswers[currentIndex] === idx;
+                const isCorrectOpt = item.correct === idx;
+
+                let btnClass = "w-full text-left p-4 rounded-xl border text-sm transition flex items-start gap-3 ";
+                if (isReviewMode) {
+                    if (isCorrectOpt) {
+                        btnClass += "bg-emerald-900/40 border-emerald-600 text-emerald-200 font-medium";
+                    } else if (isSelected && !isCorrectOpt) {
+                        btnClass += "bg-rose-900/40 border-rose-600 text-rose-200";
+                    } else {
+                        btnClass += "bg-slate-900 border-slate-700 text-slate-300 opacity-70";
+                    }
+                } else {
+                    if (isSelected) {
+                        btnClass += "bg-teal-900/50 border-teal-600 text-white font-medium shadow-md";
+                    } else {
+                        btnClass += "bg-slate-900 hover:bg-slate-700/50 border-slate-700 text-slate-300";
+                    }
+                }
+
+                const letter = String.fromCharCode(65 + idx);
+                container.innerHTML += `
+                    <button onclick="selectOption(${idx})" ${isReviewMode ? 'disabled' : ''} class="${btnClass}">
+                        <span class="font-bold w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700 text-xs text-teal-400">${letter}</span>
+                        <span class="leading-relaxed mt-0.5">${opt}</span>
+                    </button>
+                `;
+            });
+
+            const rationalBox = document.getElementById('rational-box');
+            if (isReviewMode || userAnswers[currentIndex] !== undefined) {
+                rationalBox.classList.remove('hidden');
+                document.getElementById('rational-text').textContent = item.rational || "No rationale provided.";
+            } else {
+                rationalBox.classList.add('hidden');
+            }
+
+            const flagBtn = document.getElementById('btn-flag');
+            if (flaggedQuestions.has(currentIndex)) {
+                flagBtn.className = "bg-gold-500 text-slate-900 font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md";
+                flagBtn.textContent = "Flagged";
+            } else {
+                flagBtn.className = "bg-slate-700 hover:bg-slate-600 text-gold-500 border border-slate-600 px-4 py-2.5 rounded-xl text-sm transition";
+                flagBtn.textContent = "Flag for Review";
+            }
+
+            document.getElementById('btn-prev').disabled = currentIndex === 0;
+            document.getElementById('progress-display').textContent = `${Object.keys(userAnswers).length}/${activeItems.length}`;
+            renderPalette();
+        }
+
+        function selectOption(idx) {
+            userAnswers[currentIndex] = idx;
+            renderQuestion();
+        }
+
+        function nextQuestion() {
+            if (currentIndex < activeItems.length - 1) {
+                currentIndex++;
+                renderQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                renderQuestion();
+            }
+        }
+
+        function toggleFlag() {
+            if (flaggedQuestions.has(currentIndex)) {
+                flaggedQuestions.delete(currentIndex);
+            } else {
+                flaggedQuestions.add(currentIndex);
+            }
+            renderQuestion();
+        }
+
+        function renderPalette() {
+            const grid = document.getElementById('palette-grid');
+            grid.innerHTML = '';
+            activeItems.forEach((_, idx) => {
+                let bg = "bg-slate-700 text-slate-300 border-slate-600";
+                if (userAnswers[idx] !== undefined) bg = "bg-teal-600 text-white border-teal-500 font-bold";
+                if (flaggedQuestions.has(idx)) bg = "bg-gold-500 text-slate-900 font-bold border-gold-600";
+                if (currentIndex === idx) bg += " ring-2 ring-white";
+
+                grid.innerHTML += `
+                    <button onclick="jumpToQuestion(${idx})" class="h-9 rounded-lg border text-xs font-mono transition ${bg}">
+                        ${idx + 1}
+                    </button>
+                `;
+            });
+        }
+
+        function jumpToQuestion(idx) {
+            currentIndex = idx;
+            renderQuestion();
+        }
+
+        function togglePalette() {
+            const sidebar = document.getElementById('palette-sidebar');
+            sidebar.classList.toggle('hidden');
+        }
+
+        function confirmSubmitExam() {
+            const unanswered = activeItems.length - Object.keys(userAnswers).length;
+            if (unanswered > 0 && !isReviewMode) {
+                if (!confirm(`You have ${unanswered} unanswered questions. Are you sure you want to submit?`)) return;
+            }
+            submitExam();
+        }
+
+        function submitExam() {
+            if (timerInterval) clearInterval(timerInterval);
+
+            let correctCount = 0;
+            activeItems.forEach((item, idx) => {
+                if (userAnswers[idx] === item.correct) correctCount++;
+            });
+
+            const score = Math.round((correctCount / activeItems.length) * 100);
+            const passed = score >= 70;
+
+            document.getElementById('res-score').textContent = `${score}%`;
+            const statusEl = document.getElementById('res-status');
+            statusEl.textContent = passed ? 'PASS' : 'FAIL';
+            statusEl.className = `text-2xl font-bold ${passed ? 'text-emerald-500' : 'text-rose-500'}`;
+
+            document.getElementById('res-total').textContent = activeItems.length;
+            document.getElementById('res-correct').textContent = correctCount;
+            document.getElementById('res-incorrect').textContent = activeItems.length - correctCount;
+            document.getElementById('res-time').textContent = document.getElementById('timer-display').textContent;
+
+            document.getElementById('view-quiz').classList.add('hidden');
+            document.getElementById('view-results').classList.remove('hidden');
+            document.getElementById('header-stats').classList.add('hidden');
+        }
+
+        function reviewExam() {
+            isReviewMode = true;
+            currentIndex = 0;
+            document.getElementById('view-results').classList.add('hidden');
+            document.getElementById('view-quiz').classList.remove('hidden');
+            document.getElementById('header-stats').classList.remove('hidden');
+            renderQuestion();
+            renderPalette();
+        }
+
+        function resetExam() {
+            document.getElementById('view-results').classList.add('hidden');
+            document.getElementById('view-setup').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
